@@ -3,42 +3,50 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Jawad AI Studio Pro</title>
 <style>
 *{box-sizing:border-box}
-body{margin:0;background:#080d18;color:white;font-family:Arial,sans-serif}
-header{text-align:center;padding:22px;background:#111a2d}
-header h1{color:#65a8ff;margin:0}
-.container{max-width:950px;margin:22px auto;padding:15px}
-.card{background:#111a2d;padding:18px;border:1px solid #26334d;border-radius:14px;margin-bottom:18px}
-textarea,select,button{width:100%;padding:13px;margin:8px 0;border-radius:8px;border:1px solid #354767;background:#0b1425;color:white;font-size:15px}
+body{margin:0;background:#080d18;color:white;font-family:Arial}
+header{text-align:center;padding:20px;background:#111a2d}
+h1{color:#65a8ff}
+main{max-width:900px;margin:auto;padding:15px}
+.card{background:#111a2d;padding:16px;border-radius:12px;margin:15px 0}
+textarea,select,button{width:100%;padding:12px;margin:7px 0;border-radius:8px}
+textarea,select{background:#080d18;color:white;border:1px solid #354767}
 textarea{height:150px}
-button{background:#2878e7;border:0;font-weight:bold;cursor:pointer}
-button:disabled{opacity:.5}
-canvas{width:100%;background:#050505;border-radius:12px}
-#status{color:#65a8ff;white-space:pre-wrap}
-#gallery{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
-#gallery img{width:100%;border-radius:8px}
-.credit{font-size:11px;color:#b9c6d8;margin-bottom:10px}
+button{background:#2878e7;color:white;border:0;font-weight:bold}
+canvas{width:100%;border-radius:10px;background:#080d18}
+#gallery img{width:100%;border-radius:8px;margin-top:10px}
+#status{color:#80b7ff;white-space:pre-wrap}
 </style>
 </head>
 <body>
-
 <header>
 <h1>Jawad AI Studio Pro</h1>
 <p>Automatic AI Explainer Video Maker</p>
 </header>
-
-<div class="container">
+<main>
 <div class="card">
 <h3>Write Your Script</h3>
-<textarea id="script" placeholder="Write your video script here..."></textarea>
+<textarea id="script" placeholder="Write your English or Hindi script here..."></textarea>
 
-<label>Video Size</label>
-<select id="ratio">
-<option value="landscape">16:9 Landscape</option>
-<option value="portrait">9:16 Shorts</option>
+<label>Language</label>
+<select id="language">
+<option value="en">English</option>
+<option value="hi">Hindi</option>
+</select>
+
+<label>Voice</label>
+<select id="voiceType">
+<option value="female">Female Voice</option>
+<option value="male">Male Voice</option>
+</select>
+
+<label>Video Format</label>
+<select id="format">
+<option value="landscape">YouTube 16:9</option>
+<option value="portrait">Shorts 9:16</option>
 </select>
 
 <label>Video Duration</label>
@@ -49,118 +57,135 @@ canvas{width:100%;background:#050505;border-radius:12px}
 <option value="180">3 Minutes</option>
 </select>
 
-<button id="create" onclick="createVideo()">Create Video</button>
-<p id="status">Ready to create your video.</p>
+<button onclick="createVideo()">Create Video</button>
+<button onclick="playVoice()">Play Voice</button>
+<button onclick="stopVoice()">Stop Voice</button>
+<p id="status">Ready.</p>
 </div>
 
 <div class="card">
-<h3>Automatic Scene Images</h3>
+<h3>Automatic Scene Pictures</h3>
 <div id="gallery"></div>
 </div>
 
 <div class="card">
 <h3>Video Preview</h3>
-<canvas id="video" width="1280" height="720"></canvas>
+<canvas id="canvas" width="1280" height="720"></canvas>
 <button onclick="playPreview()">Play Preview</button>
 <button onclick="stopPreview()">Stop Preview</button>
-<button onclick="exportVideo()">Export Video</button>
+<button onclick="exportVideo()">Download Video</button>
 </div>
-</div>
+</main>
 
 <script>
 const API="https://jawad-ai-api.jawadraja00999.workers.dev/";
-let scenes=[];
-let current=0;
-let playing=false;
-let recorder=null;
-let chunks=[];
-
-const canvas=document.getElementById("video");
+const canvas=document.getElementById("canvas");
 const ctx=canvas.getContext("2d");
+let scenes=[];
+let playing=false;
+let previewTimer=null;
 
-function splitScript(text){
-return text.match(/[^.!?]+[.!?]?/g)?.map(x=>x.trim()).filter(Boolean)||[];
+function splitText(text){
+return text.match(/[^.!?।]+[.!?।]?/g)?.map(x=>x.trim()).filter(Boolean)||[];
+}
+
+function stopVoice(){
+speechSynthesis.cancel();
+}
+
+function playVoice(){
+let text=document.getElementById("script").value.trim();
+if(!text){alert("Please write your script first.");return;}
+
+stopVoice();
+
+let lang=document.getElementById("language").value;
+let type=document.getElementById("voiceType").value;
+let utterance=new SpeechSynthesisUtterance(text);
+utterance.lang=lang==="hi"?"hi-IN":"en-US";
+utterance.rate=0.92;
+utterance.pitch=type==="female"?1.1:0.9;
+
+let voices=speechSynthesis.getVoices();
+let matching=voices.filter(v=>v.lang.toLowerCase().startsWith(lang));
+let preferred=matching.find(v=>{
+let name=v.name.toLowerCase();
+return type==="female"
+?/female|zira|samantha/i.test(name)
+:/male|david|mark|daniel/i.test(name);
+});
+if(preferred)utterance.voice=preferred;
+else if(matching.length)utterance.voice=matching[0];
+
+speechSynthesis.speak(utterance);
+}
+
+function safe(s){
+return String(s||"").replace(/[&<>"']/g,c=>({
+"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+})[c]);
 }
 
 async function createVideo(){
-const script=document.getElementById("script").value.trim();
-if(!script){alert("Please write your script first.");return;}
+let text=document.getElementById("script").value.trim();
+if(!text){alert("Write your script first.");return;}
 
-const btn=document.getElementById("create");
-btn.disabled=true;
+stopPreview();
+stopVoice();
 scenes=[];
 document.getElementById("gallery").innerHTML="";
-document.getElementById("status").textContent="Finding relevant pictures...";
+let sentences=splitText(text).slice(0,5);
 
-let sentences=splitScript(script).slice(0,5);
+document.getElementById("status").textContent="Finding pictures...";
 
 try{
 for(let i=0;i<sentences.length;i++){
 document.getElementById("status").textContent=
-"Finding pictures: "+(i+1)+" of "+sentences.length;
+"Searching picture "+(i+1)+" of "+sentences.length;
 
-let response=await fetch(API+"?query="+encodeURIComponent(sentences[i].slice(0,120)));
+let query=sentences[i].replace(/[^\p{L}\p{N} ]/gu," ").slice(0,100);
+let response=await fetch(API+"?query="+encodeURIComponent(query));
+if(!response.ok)throw Error("Image search failed");
 let data=await response.json();
-
-if(!response.ok)throw new Error(data.error||"Image search failed");
-
 let photo=data.images?.[0];
-let image=null;
+let img=null;
 
 if(photo){
-image=new Image();
-image.crossOrigin="anonymous";
-image.src=photo.image;
+img=new Image();
+img.crossOrigin="anonymous";
+img.src=photo.image;
 await new Promise(resolve=>{
-image.onload=resolve;
-image.onerror=resolve;
+img.onload=resolve;
+img.onerror=resolve;
 });
 }
 
-scenes.push({
-text:sentences[i],
-image:image,
-credit:photo?.photographer||"",
-creditLink:photo?.credit||"",
-source:photo?.source||""
-});
+scenes.push({text:sentences[i],image:img,photo:photo});
 
 if(photo){
 let div=document.createElement("div");
-let img=document.createElement("img");
-img.src=photo.image;
-div.appendChild(img);
-
-let credit=document.createElement("div");
-credit.className="credit";
-credit.innerHTML="Photo by <a target='_blank' href='"+photo.credit+"'>"+
-escapeHTML(photo.photographer)+"</a> on <a target='_blank' href='"+photo.source+"'>Unsplash</a>";
+let picture=document.createElement("img");
+picture.src=photo.image;
+div.appendChild(picture);
+let credit=document.createElement("p");
+credit.innerHTML="Photo by <a target='_blank' href='"+safe(photo.credit)+"'>"+
+safe(photo.photographer)+"</a> on <a target='_blank' href='"+safe(photo.source)+"'>Unsplash</a>";
 div.appendChild(credit);
 document.getElementById("gallery").appendChild(div);
 }
 }
 
-current=0;
 drawScene(0);
 document.getElementById("status").textContent=
-"Done! "+scenes.length+" scenes ready. Pictures and captions loaded.";
-}catch(error){
-document.getElementById("status").textContent="Error: "+error.message;
+"Done! "+scenes.length+" scenes created.";
+}catch(e){
+document.getElementById("status").textContent="Error: "+e.message;
 }
-btn.disabled=false;
-}
-
-function escapeHTML(s){
-return String(s).replace(/[&<>"']/g,c=>({
-"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
-})[c]);
 }
 
-function drawScene(index){
+function drawScene(i){
 if(!scenes.length)return;
-let s=scenes[index];
-let w=canvas.width,h=canvas.height;
-
+let s=scenes[i],w=canvas.width,h=canvas.height;
 ctx.fillStyle="#101b30";
 ctx.fillRect(0,0,w,h);
 
@@ -170,73 +195,69 @@ let iw=s.image.width*scale,ih=s.image.height*scale;
 ctx.drawImage(s.image,(w-iw)/2,(h-ih)/2,iw,ih);
 }
 
-let gradient=ctx.createLinearGradient(0,h*.35,0,h);
-gradient.addColorStop(0,"rgba(0,0,0,0.05)");
-gradient.addColorStop(1,"rgba(0,0,0,0.88)");
-ctx.fillStyle=gradient;
-ctx.fillRect(0,0,w,h);
-
+ctx.fillStyle="rgba(0,0,0,.75)";
+ctx.fillRect(0,h*.62,w,h*.38);
 ctx.fillStyle="white";
 ctx.textAlign="center";
-ctx.font="bold "+Math.round(w*.045)+"px Arial";
+ctx.font="bold "+Math.round(w*.04)+"px Arial";
 
-let words=s.text.split(" "),lines=[],line="";
+let words=s.text.split(/\s+/),lines=[],line="";
 for(let word of words){
 let test=line+word+" ";
-if(ctx.measureText(test).width>w*.85){
-lines.push(line);
+if(ctx.measureText(test).width>w*.84&&line){
+lines.push(line.trim());
 line=word+" ";
 }else line=test;
 }
-if(line)lines.push(line);
+if(line)lines.push(line.trim());
 
-let lineHeight=Math.round(w*.055);
-let start=h*.72-(lines.length*lineHeight)/2;
-lines.forEach((l,i)=>ctx.fillText(l.trim(),w/2,start+i*lineHeight));
+let lineHeight=w*.05;
+let start=h*.80-(lines.length*lineHeight)/2;
+lines.forEach((l,n)=>ctx.fillText(l,w/2,start+n*lineHeight));
 
-ctx.font="22px Arial";
-ctx.fillStyle="#b9d8ff";
-ctx.fillText("JAWAD AI STUDIO",w/2,h-35);
+ctx.font="bold 22px Arial";
+ctx.fillStyle="#9bc9ff";
+ctx.fillText("JAWAD AI STUDIO",w/2,h-25);
 }
 
 function playPreview(){
-if(!scenes.length){alert("Create your video first.");return;}
+if(!scenes.length){alert("Create video first.");return;}
+stopPreview();
 playing=true;
-current=0;
-showNext();
-}
-
-function showNext(){
+let i=0;
+function next(){
 if(!playing)return;
-drawScene(current);
-current=(current+1)%scenes.length;
-setTimeout(showNext,3000);
+drawScene(i);
+i=(i+1)%scenes.length;
+previewTimer=setTimeout(next,3000);
+}
+next();
 }
 
 function stopPreview(){
 playing=false;
+clearTimeout(previewTimer);
 }
 
-async function exportVideo(){
-if(!scenes.length){alert("Create your video first.");return;}
+function exportVideo(){
+if(!scenes.length){alert("Create video first.");return;}
 if(!canvas.captureStream||!window.MediaRecorder){
 alert("Video export is not supported in this browser.");
 return;
 }
 
 stopPreview();
-
-let ratio=document.getElementById("ratio").value;
-canvas.width=ratio==="portrait"?720:1280;
-canvas.height=ratio==="portrait"?1280:720;
+let portrait=document.getElementById("format").value==="portrait";
+canvas.width=portrait?720:1280;
+canvas.height=portrait?1280:720;
 
 let stream=canvas.captureStream(30);
-let mime=MediaRecorder.isTypeSupported("video/webm;codecs=vp9")
-?"video/webm;codecs=vp9":"video/webm";
+let chunks=[];
+let recorder=new MediaRecorder(stream);
 
-chunks=[];
-recorder=new MediaRecorder(stream,{mimeType:mime});
-recorder.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};
+recorder.ondataavailable=e=>{
+if(e.data.size)chunks.push(e.data);
+};
 
 recorder.onstop=()=>{
 let blob=new Blob(chunks,{type:"video/webm"});
@@ -246,22 +267,17 @@ a.href=url;
 a.download="Jawad-AI-Video.webm";
 a.click();
 URL.revokeObjectURL(url);
-document.getElementById("status").textContent="Video exported successfully!";
+document.getElementById("status").textContent="Video downloaded!";
 };
 
-let seconds=Number(document.getElementById("duration").value);
-let sceneDuration=seconds/scenes.length;
-
+let duration=Number(document.getElementById("duration").value)*1000/scenes.length;
 recorder.start();
 let i=0;
+
 function next(){
-drawScene(i);
-i++;
-if(i<scenes.length){
-setTimeout(next,sceneDuration*1000);
-}else{
-setTimeout(()=>recorder.stop(),sceneDuration*1000);
-}
+drawScene(i++);
+if(i<scenes.length)setTimeout(next,duration);
+else setTimeout(()=>recorder.stop(),duration);
 }
 next();
 }
