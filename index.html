@@ -16,10 +16,12 @@ textarea,select,button{width:100%;padding:12px;margin:7px 0;border-radius:8px}
 textarea,select{background:#080d18;color:white;border:1px solid #354767}
 textarea{height:150px}
 button{background:#2878e7;color:white;border:0;font-weight:bold}
+button:active{background:#1554a8}
 canvas{width:100%;border-radius:10px;background:#080d18}
 #gallery img{width:100%;border-radius:10px;margin-top:10px}
 #status{color:#80b7ff;white-space:pre-wrap}
 a{color:#80b7ff}
+.scene{margin:15px 0;padding:10px;background:#080d18;border-radius:10px}
 </style>
 </head>
 <body>
@@ -30,6 +32,7 @@ a{color:#80b7ff}
 </header>
 
 <main>
+
 <div class="card">
 <h3>Write Your Script</h3>
 
@@ -80,6 +83,7 @@ a{color:#80b7ff}
 <button onclick="stopPreview()">Stop Preview + Voice</button>
 <button onclick="exportVideo()">Download Video</button>
 </div>
+
 </main>
 
 <script>
@@ -91,10 +95,37 @@ const ctx=canvas.getContext("2d");
 let scenes=[];
 let playing=false;
 let previewTimer=null;
+let exportTimer=null;
+
+const stopWords=[
+"the","is","are","was","were","a","an","and","or","but",
+"to","of","in","on","at","for","with","from","by","as",
+"this","that","these","those","it","its","they","them",
+"he","she","his","her","we","you","your","their",
+"what","when","where","why","how","who","which",
+"एक","और","है","हैं","था","थी","थे","को","का","की",
+"के","में","पर","से","यह","वह","इस","उस","जो","कि",
+"और","भी","तो","अगर","लेकिन","क्यों","कैसे","क्या",
+"होता","होती","होते","करता","करती","करते"
+];
 
 function splitText(text){
 return text.match(/[^.!?।]+[.!?।]?/g)
 ?.map(x=>x.trim()).filter(Boolean)||[];
+}
+
+function buildImageQuery(sentence){
+
+let words=sentence
+.toLowerCase()
+.replace(/[^\p{L}\p{N}\s]/gu," ")
+.split(/\s+/)
+.filter(word=>word.length>2&&!stopWords.includes(word));
+
+let unique=[...new Set(words)];
+
+return unique.slice(0,6).join(" ")||sentence.slice(0,80);
+
 }
 
 function stopVoice(){
@@ -104,6 +135,7 @@ speechSynthesis.cancel();
 }
 
 function playVoice(){
+
 let text=document.getElementById("script").value.trim();
 
 if(!text){
@@ -122,6 +154,7 @@ let lang=document.getElementById("language").value;
 let type=document.getElementById("voiceType").value;
 
 let utterance=new SpeechSynthesisUtterance(text);
+
 utterance.lang=lang==="hi"?"hi-IN":"en-US";
 utterance.rate=0.92;
 utterance.pitch=type==="female"?1.1:0.9;
@@ -147,6 +180,7 @@ utterance.voice=matching[0];
 }
 
 speechSynthesis.speak(utterance);
+
 }
 
 function safe(s){
@@ -177,25 +211,25 @@ document.getElementById("gallery").innerHTML="";
 
 let sentences=splitText(text).slice(0,20);
 
-document.getElementById("status").textContent="Finding pictures...";
+document.getElementById("status").textContent=
+"Finding matching pictures...";
 
 try{
 
 for(let i=0;i<sentences.length;i++){
 
-document.getElementById("status").textContent=
-"Searching picture "+(i+1)+" of "+sentences.length;
+let query=buildImageQuery(sentences[i]);
 
-let query=sentences[i]
-.replace(/[^\p{L}\p{N} ]/gu," ")
-.slice(0,100);
+document.getElementById("status").textContent=
+"Finding picture "+(i+1)+" of "+sentences.length+
+"\nSearching: "+query;
 
 let response=await fetch(
 API+"?query="+encodeURIComponent(query)
 );
 
 if(!response.ok){
-throw Error("Image search failed");
+throw Error("Image search failed. Please try again.");
 }
 
 let data=await response.json();
@@ -222,12 +256,18 @@ image:img,
 photo:photo
 });
 
-if(photo){
-
 let div=document.createElement("div");
+div.className="scene";
+
+let heading=document.createElement("p");
+heading.textContent="Scene "+(i+1)+": "+sentences[i];
+div.appendChild(heading);
+
+if(photo){
 
 let picture=document.createElement("img");
 picture.src=photo.image;
+picture.alt=query;
 
 div.appendChild(picture);
 
@@ -242,9 +282,15 @@ safe(photo.source)+'">Unsplash</a>';
 
 div.appendChild(credit);
 
-document.getElementById("gallery").appendChild(div);
+}else{
+
+let noImage=document.createElement("p");
+noImage.textContent="No matching picture found for this scene.";
+div.appendChild(noImage);
 
 }
+
+document.getElementById("gallery").appendChild(div);
 
 }
 
@@ -293,7 +339,7 @@ ih
 
 }
 
-ctx.fillStyle="rgba(0,0,0,.75)";
+ctx.fillStyle="rgba(0,0,0,.78)";
 ctx.fillRect(0,h*.62,w,h*.38);
 
 ctx.fillStyle="white";
@@ -346,7 +392,6 @@ return;
 stopPreview();
 
 playing=true;
-
 playVoice();
 
 let i=0;
@@ -372,6 +417,7 @@ function stopPreview(){
 playing=false;
 
 clearTimeout(previewTimer);
+clearTimeout(exportTimer);
 
 stopVoice();
 
@@ -385,10 +431,8 @@ return;
 }
 
 if(!canvas.captureStream||!window.MediaRecorder){
-
 alert("Video export is not supported in this browser.");
 return;
-
 }
 
 stopPreview();
@@ -400,30 +444,24 @@ canvas.width=portrait?720:1280;
 canvas.height=portrait?1280:720;
 
 let stream=canvas.captureStream(30);
-
 let chunks=[];
 
 let recorder=new MediaRecorder(stream);
 
 recorder.ondataavailable=e=>{
-
 if(e.data.size){
 chunks.push(e.data);
 }
-
 };
 
 recorder.onstop=()=>{
 
 let blob=new Blob(chunks,{type:"video/webm"});
-
 let url=URL.createObjectURL(blob);
 
 let a=document.createElement("a");
-
 a.href=url;
 a.download="Jawad-AI-Video.webm";
-
 a.click();
 
 URL.revokeObjectURL(url);
@@ -447,11 +485,11 @@ drawScene(i++);
 
 if(i<scenes.length){
 
-setTimeout(next,duration);
+exportTimer=setTimeout(next,duration);
 
 }else{
 
-setTimeout(()=>recorder.stop(),duration);
+exportTimer=setTimeout(()=>recorder.stop(),duration);
 
 }
 
