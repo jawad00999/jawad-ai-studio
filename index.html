@@ -5,429 +5,266 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Jawad AI Studio Pro</title>
-
 <style>
 *{box-sizing:border-box}
-body{
- margin:0;background:#080d19;color:white;
- font-family:Arial,sans-serif;
-}
-header{
- padding:20px;text-align:center;
- background:#111a2d;border-bottom:1px solid #26334d;
-}
-header h1{margin:0;color:#65a8ff}
-header p{color:#aab6ce}
-.container{max-width:950px;margin:25px auto;padding:15px}
-.card{
- background:#111a2d;padding:20px;
- border:1px solid #26334d;border-radius:14px;
- margin-bottom:18px;
-}
-label{display:block;margin:14px 0 7px;color:#cbd5e1}
-textarea,select{
- width:100%;padding:13px;border-radius:9px;
- border:1px solid #33435f;background:#091222;
- color:white;font-size:15px;
-}
-textarea{height:150px;resize:vertical}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-button{
- padding:13px 17px;border:0;border-radius:9px;
- background:#2878ed;color:white;font-weight:bold;
- cursor:pointer;margin:7px 5px 5px 0;
-}
+body{margin:0;background:#080d18;color:white;font-family:Arial,sans-serif}
+header{text-align:center;padding:22px;background:#111a2d}
+header h1{color:#65a8ff;margin:0}
+.container{max-width:950px;margin:22px auto;padding:15px}
+.card{background:#111a2d;padding:18px;border:1px solid #26334d;border-radius:14px;margin-bottom:18px}
+textarea,select,button{width:100%;padding:13px;margin:8px 0;border-radius:8px;border:1px solid #354767;background:#0b1425;color:white;font-size:15px}
+textarea{height:150px}
+button{background:#2878e7;border:0;font-weight:bold;cursor:pointer}
 button:disabled{opacity:.5}
-.secondary{background:#34445e}
-#screen{
- width:100%;aspect-ratio:16/9;
- background:#080d19;border-radius:12px;
- display:block;
-}
-#message{color:#83c5ff;line-height:1.6}
-#sceneInfo{color:#aab6ce}
-footer{text-align:center;padding:20px;color:#8492aa}
-@media(max-width:600px){
- .grid{grid-template-columns:1fr}
- .container{padding:10px}
-}
+canvas{width:100%;background:#050505;border-radius:12px}
+#status{color:#65a8ff;white-space:pre-wrap}
+#gallery{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+#gallery img{width:100%;border-radius:8px}
+.credit{font-size:11px;color:#b9c6d8;margin-bottom:10px}
 </style>
 </head>
-
 <body>
 
 <header>
 <h1>Jawad AI Studio Pro</h1>
-<p>Create Animated Explainer Videos</p>
+<p>Automatic AI Explainer Video Maker</p>
 </header>
 
 <div class="container">
-
 <div class="card">
-<h2>AI Video Generator</h2>
+<h3>Write Your Script</h3>
+<textarea id="script" placeholder="Write your video script here..."></textarea>
 
-<label>Enter Your Topic or Script</label>
-<textarea id="script" maxlength="10000"
-placeholder="Enter your video topic or complete script here..."></textarea>
-<p id="count">0 / 10000</p>
+<label>Video Size</label>
+<select id="ratio">
+<option value="landscape">16:9 Landscape</option>
+<option value="portrait">9:16 Shorts</option>
+</select>
 
-<div class="grid">
-<div>
 <label>Video Duration</label>
 <select id="duration">
 <option value="30">30 Seconds</option>
 <option value="60">1 Minute</option>
-<option value="120" selected>2 Minutes</option>
+<option value="120">2 Minutes</option>
 <option value="180">3 Minutes</option>
 </select>
-</div>
 
-<div>
-<label>Video Format</label>
-<select id="format">
-<option value="16:9">16:9 Landscape</option>
-<option value="9:16">9:16 Portrait</option>
-</select>
-</div>
-
-<div>
-<label>Language</label>
-<select id="language">
-<option value="en-US">English</option>
-<option value="hi-IN">Hindi</option>
-<option value="ur-PK">Urdu</option>
-</select>
-</div>
-
-<div>
-<label>Video Style</label>
-<select id="style">
-<option value="explainer">AI Explainer</option>
-<option value="documentary">Documentary</option>
-<option value="education">Educational</option>
-<option value="technology">Technology</option>
-</select>
-</div>
-</div>
-
-<button onclick="createVideo()">Create Video</button>
-<p id="message">Enter your script to get started.</p>
+<button id="create" onclick="createVideo()">Create Video</button>
+<p id="status">Ready to create your video.</p>
 </div>
 
 <div class="card">
-<h2>Video Preview</h2>
-<canvas id="screen" width="1280" height="720"></canvas>
-<p id="sceneInfo">Your video preview will appear here.</p>
-
-<button onclick="playVideo()" id="playBtn" disabled>▶ Play Preview</button>
-<button onclick="stopVideo()" class="secondary">Stop</button>
-<button onclick="speakScript()" class="secondary">🔊 Play Voice</button>
-<button onclick="stopVoice()" class="secondary">Stop Voice</button>
-<button onclick="exportVideo()" id="exportBtn" disabled>⬇ Export Video</button>
+<h3>Automatic Scene Images</h3>
+<div id="gallery"></div>
 </div>
 
 <div class="card">
-<h3>My Projects</h3>
-<p>Your current project is available in the preview above.</p>
-<h3>About</h3>
-<p>Jawad AI Studio helps you create animated educational and explainer videos.</p>
+<h3>Video Preview</h3>
+<canvas id="video" width="1280" height="720"></canvas>
+<button onclick="playPreview()">Play Preview</button>
+<button onclick="stopPreview()">Stop Preview</button>
+<button onclick="exportVideo()">Export Video</button>
 </div>
-
 </div>
-
-<footer>© 2026 Jawad AI Studio Pro</footer>
 
 <script>
-const scriptBox=document.getElementById("script");
-const count=document.getElementById("count");
-const canvas=document.getElementById("screen");
+const API="https://jawad-ai-api.jawadraja00999.workers.dev/";
+let scenes=[];
+let current=0;
+let playing=false;
+let recorder=null;
+let chunks=[];
+
+const canvas=document.getElementById("video");
 const ctx=canvas.getContext("2d");
 
-let scenes=[];
-let playing=false;
-let animationFrame=null;
-let startTime=0;
-let elapsed=0;
-let sceneDuration=5;
-let totalDuration=120;
+function splitScript(text){
+return text.match(/[^.!?]+[.!?]?/g)?.map(x=>x.trim()).filter(Boolean)||[];
+}
 
-scriptBox.addEventListener("input",()=>{
- count.textContent=scriptBox.value.length+" / 10000";
+async function createVideo(){
+const script=document.getElementById("script").value.trim();
+if(!script){alert("Please write your script first.");return;}
+
+const btn=document.getElementById("create");
+btn.disabled=true;
+scenes=[];
+document.getElementById("gallery").innerHTML="";
+document.getElementById("status").textContent="Finding relevant pictures...";
+
+let sentences=splitScript(script).slice(0,5);
+
+try{
+for(let i=0;i<sentences.length;i++){
+document.getElementById("status").textContent=
+"Finding pictures: "+(i+1)+" of "+sentences.length;
+
+let response=await fetch(API+"?query="+encodeURIComponent(sentences[i].slice(0,120)));
+let data=await response.json();
+
+if(!response.ok)throw new Error(data.error||"Image search failed");
+
+let photo=data.images?.[0];
+let image=null;
+
+if(photo){
+image=new Image();
+image.crossOrigin="anonymous";
+image.src=photo.image;
+await new Promise(resolve=>{
+image.onload=resolve;
+image.onerror=resolve;
+});
+}
+
+scenes.push({
+text:sentences[i],
+image:image,
+credit:photo?.photographer||"",
+creditLink:photo?.credit||"",
+source:photo?.source||""
 });
 
-function createVideo(){
- const text=scriptBox.value.trim();
- const message=document.getElementById("message");
+if(photo){
+let div=document.createElement("div");
+let img=document.createElement("img");
+img.src=photo.image;
+div.appendChild(img);
 
- if(!text){
-  message.textContent="Please enter a topic or script first.";
-  return;
- }
+let credit=document.createElement("div");
+credit.className="credit";
+credit.innerHTML="Photo by <a target='_blank' href='"+photo.credit+"'>"+
+escapeHTML(photo.photographer)+"</a> on <a target='_blank' href='"+photo.source+"'>Unsplash</a>";
+div.appendChild(credit);
+document.getElementById("gallery").appendChild(div);
+}
+}
 
- const format=document.getElementById("format").value;
+current=0;
+drawScene(0);
+document.getElementById("status").textContent=
+"Done! "+scenes.length+" scenes ready. Pictures and captions loaded.";
+}catch(error){
+document.getElementById("status").textContent="Error: "+error.message;
+}
+btn.disabled=false;
+}
 
- if(format==="9:16"){
-  canvas.width=720;
-  canvas.height=1280;
- }else{
-  canvas.width=1280;
-  canvas.height=720;
- }
-
- totalDuration=Number(document.getElementById("duration").value);
-
- const sentences=text.match(/[^.!?۔]+[.!?۔]*/g)||[text];
-
- scenes=sentences
- .map(s=>s.trim())
- .filter(s=>s.length>0);
-
- if(scenes.length===0){
-  message.textContent="Please enter a valid script.";
-  return;
- }
-
- sceneDuration=totalDuration/scenes.length;
- elapsed=0;
-
- drawScene(0);
-
- document.getElementById("playBtn").disabled=false;
- document.getElementById("exportBtn").disabled=false;
-
- message.textContent="✓ Your video is ready for preview!";
- document.getElementById("sceneInfo").textContent=
- scenes.length+" scenes created.";
+function escapeHTML(s){
+return String(s).replace(/[&<>"']/g,c=>({
+"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+})[c]);
 }
 
 function drawScene(index){
- const w=canvas.width;
- const h=canvas.height;
+if(!scenes.length)return;
+let s=scenes[index];
+let w=canvas.width,h=canvas.height;
 
- const colors=[
- ["#101c40","#2258a5"],
- ["#251044","#6538a6"],
- ["#092c36","#137d85"],
- ["#321727","#9a3f59"]
- ];
+ctx.fillStyle="#101b30";
+ctx.fillRect(0,0,w,h);
 
- const color=colors[index%colors.length];
-
- const gradient=ctx.createLinearGradient(0,0,w,h);
- gradient.addColorStop(0,color[0]);
- gradient.addColorStop(1,color[1]);
-
- ctx.fillStyle=gradient;
- ctx.fillRect(0,0,w,h);
-
- ctx.fillStyle="rgba(255,255,255,0.08)";
- ctx.beginPath();
- ctx.arc(w*.85,h*.18,h*.16,0,Math.PI*2);
- ctx.fill();
-
- ctx.fillStyle="#69c5ff";
- ctx.font=`bold ${Math.round(w*.035)}px Arial`;
- ctx.textAlign="center";
- ctx.fillText("JAWAD AI STUDIO",w/2,h*.18);
-
- const text=scenes[index]||"Thank you for watching!";
- const maxWidth=w*.78;
- const words=text.split(/\s+/);
- const lines=[];
- let line="";
-
- ctx.font=`bold ${Math.round(w*.045)}px Arial`;
-
- for(const word of words){
-  const test=line?line+" "+word:word;
-  if(ctx.measureText(test).width>maxWidth&&line){
-   lines.push(line);
-   line=word;
-  }else{
-   line=test;
-  }
- }
- if(line)lines.push(line);
-
- const lineHeight=Math.round(w*.065);
- const totalHeight=lines.length*lineHeight;
- let y=h/2-totalHeight/2;
-
- ctx.fillStyle="white";
- lines.forEach(item=>{
-  ctx.fillText(item,w/2,y);
-  y+=lineHeight;
- });
-
- ctx.fillStyle="#a9c8ff";
- ctx.font=`${Math.round(w*.022)}px Arial`;
- ctx.fillText(
-  "Scene "+(index+1)+" / "+scenes.length,
-  w/2,h*.88
- );
+if(s.image&&s.image.complete&&s.image.naturalWidth){
+let scale=Math.max(w/s.image.width,h/s.image.height);
+let iw=s.image.width*scale,ih=s.image.height*scale;
+ctx.drawImage(s.image,(w-iw)/2,(h-ih)/2,iw,ih);
 }
 
-function playVideo(){
- if(scenes.length===0)return;
+let gradient=ctx.createLinearGradient(0,h*.35,0,h);
+gradient.addColorStop(0,"rgba(0,0,0,0.05)");
+gradient.addColorStop(1,"rgba(0,0,0,0.88)");
+ctx.fillStyle=gradient;
+ctx.fillRect(0,0,w,h);
 
- stopVideo();
- playing=true;
- startTime=performance.now()-elapsed*1000;
+ctx.fillStyle="white";
+ctx.textAlign="center";
+ctx.font="bold "+Math.round(w*.045)+"px Arial";
 
- function animate(now){
-  if(!playing)return;
+let words=s.text.split(" "),lines=[],line="";
+for(let word of words){
+let test=line+word+" ";
+if(ctx.measureText(test).width>w*.85){
+lines.push(line);
+line=word+" ";
+}else line=test;
+}
+if(line)lines.push(line);
 
-  elapsed=(now-startTime)/1000;
+let lineHeight=Math.round(w*.055);
+let start=h*.72-(lines.length*lineHeight)/2;
+lines.forEach((l,i)=>ctx.fillText(l.trim(),w/2,start+i*lineHeight));
 
-  if(elapsed>=totalDuration){
-   elapsed=totalDuration;
-   playing=false;
-   drawScene(scenes.length-1);
-   document.getElementById("sceneInfo").textContent="Preview finished.";
-   return;
-  }
-
-  const index=Math.min(
-   Math.floor(elapsed/sceneDuration),
-   scenes.length-1
-  );
-
-  drawScene(index);
-
-  document.getElementById("sceneInfo").textContent=
-  "Scene "+(index+1)+" / "+scenes.length+
-  " | "+Math.floor(elapsed)+" seconds";
-
-  animationFrame=requestAnimationFrame(animate);
- }
-
- animationFrame=requestAnimationFrame(animate);
+ctx.font="22px Arial";
+ctx.fillStyle="#b9d8ff";
+ctx.fillText("JAWAD AI STUDIO",w/2,h-35);
 }
 
-function stopVideo(){
- playing=false;
- if(animationFrame!==null){
-  cancelAnimationFrame(animationFrame);
-  animationFrame=null;
- }
+function playPreview(){
+if(!scenes.length){alert("Create your video first.");return;}
+playing=true;
+current=0;
+showNext();
 }
 
-function speakScript(){
- const text=scriptBox.value.trim();
-
- if(!text){
-  alert("Please enter a script first.");
-  return;
- }
-
- if(!("speechSynthesis" in window)){
-  alert("Voice is not supported in this browser.");
-  return;
- }
-
- stopVoice();
-
- const speech=new SpeechSynthesisUtterance(text);
- speech.lang=document.getElementById("language").value;
- speech.rate=0.95;
-
- window.speechSynthesis.speak(speech);
+function showNext(){
+if(!playing)return;
+drawScene(current);
+current=(current+1)%scenes.length;
+setTimeout(showNext,3000);
 }
 
-function stopVoice(){
- if("speechSynthesis" in window){
-  window.speechSynthesis.cancel();
- }
+function stopPreview(){
+playing=false;
 }
 
 async function exportVideo(){
- if(scenes.length===0)return;
+if(!scenes.length){alert("Create your video first.");return;}
+if(!canvas.captureStream||!window.MediaRecorder){
+alert("Video export is not supported in this browser.");
+return;
+}
 
- if(!canvas.captureStream||!window.MediaRecorder){
-  alert("Video export is not supported in this browser.");
-  return;
- }
+stopPreview();
 
- stopVideo();
+let ratio=document.getElementById("ratio").value;
+canvas.width=ratio==="portrait"?720:1280;
+canvas.height=ratio==="portrait"?1280:720;
 
- const btn=document.getElementById("exportBtn");
- btn.disabled=true;
- btn.textContent="Creating video...";
+let stream=canvas.captureStream(30);
+let mime=MediaRecorder.isTypeSupported("video/webm;codecs=vp9")
+?"video/webm;codecs=vp9":"video/webm";
 
- try{
-  const stream=canvas.captureStream(30);
+chunks=[];
+recorder=new MediaRecorder(stream,{mimeType:mime});
+recorder.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};
 
-  const types=[
-   "video/webm;codecs=vp9",
-   "video/webm;codecs=vp8",
-   "video/webm"
-  ];
+recorder.onstop=()=>{
+let blob=new Blob(chunks,{type:"video/webm"});
+let url=URL.createObjectURL(blob);
+let a=document.createElement("a");
+a.href=url;
+a.download="Jawad-AI-Video.webm";
+a.click();
+URL.revokeObjectURL(url);
+document.getElementById("status").textContent="Video exported successfully!";
+};
 
-  const mime=types.find(type=>MediaRecorder.isTypeSupported(type));
+let seconds=Number(document.getElementById("duration").value);
+let sceneDuration=seconds/scenes.length;
 
-  if(!mime){
-   throw new Error("WebM recording is not supported.");
-  }
-
-  const recorder=new MediaRecorder(stream,{mimeType:mime});
-  const chunks=[];
-
-  recorder.ondataavailable=e=>{
-   if(e.data&&e.data.size>0)chunks.push(e.data);
-  };
-
-  recorder.onstop=()=>{
-   const blob=new Blob(chunks,{type:"video/webm"});
-   const url=URL.createObjectURL(blob);
-   const link=document.createElement("a");
-
-   link.href=url;
-   link.download="Jawad-AI-Studio-Video.webm";
-   link.click();
-
-   setTimeout(()=>URL.revokeObjectURL(url),10000);
-
-   stream.getTracks().forEach(track=>track.stop());
-   btn.disabled=false;
-   btn.textContent="⬇ Export Video";
-   document.getElementById("message").textContent=
-   "✓ Video exported successfully!";
-  };
-
-  recorder.start();
-
-  const exportStart=performance.now();
-
-  function recordFrame(now){
-   const seconds=(now-exportStart)/1000;
-
-   if(seconds>=totalDuration){
-    drawScene(scenes.length-1);
-    recorder.stop();
-    return;
-   }
-
-   const index=Math.min(
-    Math.floor(seconds/sceneDuration),
-    scenes.length-1
-   );
-
-   drawScene(index);
-   document.getElementById("sceneInfo").textContent=
-   "Exporting: "+Math.floor(seconds)+" / "+totalDuration+" seconds";
-
-   requestAnimationFrame(recordFrame);
-  }
-
-  requestAnimationFrame(recordFrame);
-
- }catch(error){
-  alert(error.message);
-  btn.disabled=false;
-  btn.textContent="⬇ Export Video";
- }
+recorder.start();
+let i=0;
+function next(){
+drawScene(i);
+i++;
+if(i<scenes.length){
+setTimeout(next,sceneDuration*1000);
+}else{
+setTimeout(()=>recorder.stop(),sceneDuration*1000);
+}
+}
+next();
 }
 </script>
-
 </body>
 </html>
