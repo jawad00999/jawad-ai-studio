@@ -52,11 +52,11 @@ button.secondary{background:#39445e}
 </div>
 </div>
 
-<label>Available Phone Voice</label>
+<label>ElevenLabs AI Voice</label>
 <select id="voiceSelect">
-<option value="">Loading voices...</option>
+<option value="">Loading AI voices...</option>
 </select>
-<p class="small">Voice options depend on voices installed on your phone.</p>
+<p class="small">Choose a male or female AI voice. Hindi and English use multilingual speech.</p>
 
 <div class="row">
 <div>
@@ -78,11 +78,11 @@ button.secondary{background:#39445e}
 </div>
 
 <button onclick="createVideo()">Generate Video Scenes</button>
-<button class="secondary" onclick="playVoice()">Test Voice</button>
-<button class="secondary" onclick="playPreview()">Play Preview + Voice</button>
+<button class="secondary" onclick="playVoice()">Test AI Voice</button>
+<button class="secondary" onclick="playPreview()">Play Preview + AI Voice</button>
 <button class="secondary" onclick="stopPreview()">Stop Preview</button>
-<button class="secondary" onclick="exportVideo()">Export Video</button>
-<div id="status">Ready to create your video.</div>
+<button class="secondary" onclick="exportVideo()">Export Video with Voice</button>
+<div id="status">Connecting to AI Studio...</div>
 </div>
 
 <div class="panel">
@@ -104,22 +104,43 @@ const ctx=canvas.getContext("2d");
 let scenes=[];
 let playing=false;
 let previewTimer=null;
-let exportTimer=null;
-let availableVoices=[];
+let currentAudio=null;
+let currentAudioURL=null;
+let aiVoices=[];
 
 function setStatus(message){
  document.getElementById("status").textContent=message;
 }
 
-function loadVoices(){
- if(!("speechSynthesis" in window))return;
-
- availableVoices=speechSynthesis.getVoices();
+// LOAD ELEVENLABS VOICES
+async function loadAIVoices(){
  const select=document.getElementById("voiceSelect");
- const lang=document.getElementById("language").value;
- const matching=availableVoices.filter(v=>
-  v.lang.toLowerCase().startsWith(lang)
- );
+ select.innerHTML='<option value="">Loading voices...</option>';
+
+ try{
+  const response=await fetch(API+"?action=voices");
+  const data=await response.json();
+
+  if(!response.ok)throw new Error(data.error||"Voice loading failed");
+
+  aiVoices=data.voices||[];
+  updateVoiceOptions();
+
+  setStatus("Connected! "+aiVoices.length+" AI voices available.");
+ }catch(error){
+  select.innerHTML='<option value="">Could not load voices</option>';
+  setStatus("Voice error: "+error.message);
+ }
+}
+
+function updateVoiceOptions(){
+ const select=document.getElementById("voiceSelect");
+ const gender=document.getElementById("voiceType").value;
+
+ const matching=aiVoices.filter(v=>{
+  const voiceGender=(v.labels?.gender||"").toLowerCase();
+  return !voiceGender||voiceGender===gender;
+ });
 
  select.innerHTML="";
 
@@ -128,50 +149,79 @@ function loadVoices(){
   return;
  }
 
- matching.forEach(voice=>{
+ matching.forEach(v=>{
   const option=document.createElement("option");
-  option.value=voice.name;
-  option.textContent=voice.name+" ("+voice.lang+")";
+  option.value=v.voice_id;
+  option.textContent=v.name;
   select.appendChild(option);
  });
 }
 
-if("speechSynthesis" in window){
- loadVoices();
- speechSynthesis.onvoiceschanged=loadVoices;
-}
+document.getElementById("voiceType").addEventListener("change",updateVoiceOptions);
 
-document.getElementById("language").addEventListener("change",loadVoices);
+async function generateSpeech(text){
+ const voiceId=document.getElementById("voiceSelect").value;
+
+ if(!voiceId)throw new Error("Please select an AI voice first.");
+ if(text.length>4500)throw new Error("Script is too long for one voice request. Please shorten it.");
+
+ const response=await fetch(API,{
+  method:"POST",
+  headers:{"Content-Type":"application/json"},
+  body:JSON.stringify({text,voiceId})
+ });
+
+ if(!response.ok){
+  let message="Speech generation failed.";
+  try{
+   const data=await response.json();
+   message=data.error||message;
+  }catch(e){}
+  throw new Error(message);
+ }
+
+ return await response.blob();
+}
 
 function stopVoice(){
- if("speechSynthesis" in window)speechSynthesis.cancel();
+ if(currentAudio){
+  currentAudio.pause();
+  currentAudio.src="";
+  currentAudio=null;
+ }
+ if(currentAudioURL){
+  URL.revokeObjectURL(currentAudioURL);
+  currentAudioURL=null;
+ }
 }
 
-function playVoice(){
+async function playVoice(){
  const text=document.getElementById("script").value.trim();
  if(!text){setStatus("Please enter your script first.");return}
- if(!("speechSynthesis" in window)){setStatus("Speech not supported.");return}
-
- loadVoices();
-
- const selectedName=document.getElementById("voiceSelect").value;
- const voice=availableVoices.find(v=>v.name===selectedName);
-
- if(!voice){setStatus("No voice available. Check phone voice settings.");return}
 
  stopVoice();
+ setStatus("Generating natural AI voice...");
 
- const utterance=new SpeechSynthesisUtterance(text);
- utterance.voice=voice;
- utterance.lang=voice.lang;
- utterance.rate=0.92;
- utterance.pitch=1;
+ try{
+  const blob=await generateSpeech(text);
+  currentAudioURL=URL.createObjectURL(blob);
+  currentAudio=new Audio(currentAudioURL);
 
- utterance.onstart=()=>setStatus("Voice playing: "+voice.name);
- utterance.onend=()=>setStatus("Voice finished.");
- utterance.onerror=()=>setStatus("Voice playback error.");
+  currentAudio.onended=()=>{
+   setStatus("AI voice finished.");
+   stopVoice();
+  };
 
- speechSynthesis.speak(utterance);
+  currentAudio.onerror=()=>{
+   setStatus("Audio playback error.");
+   stopVoice();
+  };
+
+  await currentAudio.play();
+  setStatus("Playing ElevenLabs AI voice...");
+ }catch(error){
+  setStatus("Voice error: "+error.message);
+ }
 }
 
 const stopWords=[
@@ -202,16 +252,12 @@ async function getImage(query){
  try{
   const response=await fetch(API+"?query="+encodeURIComponent(query));
   if(!response.ok)return null;
-
   const data=await response.json();
-
-  if(data.images&&data.images.length){
-   return data.images[0];
-  }
+  return data.image?data:null;
  }catch(error){
   console.error("Image API error:",error);
+  return null;
  }
- return null;
 }
 
 async function createVideo(){
@@ -228,16 +274,13 @@ async function createVideo(){
  for(let i=0;i<sentences.length;i++){
   setStatus("Finding images: "+(i+1)+" / "+sentences.length);
 
-  const query=buildImageQuery(sentences[i]);
-  const imageData=await getImage(query);
-
+  const imageData=await getImage(buildImageQuery(sentences[i]));
   const imageUrl=imageData?.image||"";
 
   const scene={
    text:sentences[i],
    image:imageUrl,
-   photo:imageData?.photographer||"",
-   source:imageData?.source||""
+   photo:imageData?.photographer||""
   };
 
   scenes.push(scene);
@@ -282,7 +325,6 @@ async function createVideo(){
 function drawCaption(text){
  const maxWidth=canvas.width*.86;
  const fontSize=canvas.width>800?48:38;
-
  ctx.font="bold "+fontSize+"px Arial";
  ctx.textAlign="center";
  ctx.textBaseline="middle";
@@ -304,7 +346,6 @@ function drawCaption(text){
 
  const lineHeight=fontSize*1.3;
  let y=(canvas.height-lines.length*lineHeight)/2;
-
  ctx.fillStyle="rgba(0,0,0,0.65)";
  ctx.fillRect(0,canvas.height*.55,canvas.width,canvas.height*.45);
  ctx.fillStyle="white";
@@ -340,98 +381,164 @@ function drawScene(index){
   drawCaption(scene.text);
  };
 
- img.onerror=()=>{
-  drawCaption(scene.text);
- };
-
+ img.onerror=()=>drawCaption(scene.text);
  img.src=scene.image;
 }
 
-function playPreview(){
+async function playPreview(){
  if(!scenes.length){setStatus("Generate scenes first.");return}
 
  stopPreview();
  playing=true;
- playVoice();
 
- let index=0;
-
- function next(){
+ const text=document.getElementById("script").value.trim();
+ try{
+  setStatus("Generating AI voice...");
+  const blob=await generateSpeech(text);
   if(!playing)return;
-  drawScene(index);
-  index=(index+1)%scenes.length;
-  previewTimer=setTimeout(next,3000);
+
+  currentAudioURL=URL.createObjectURL(blob);
+  currentAudio=new Audio(currentAudioURL);
+  currentAudio.onended=()=>stopPreview();
+  currentAudio.onerror=()=>stopPreview();
+
+  await currentAudio.play();
+
+  let index=0;
+  function next(){
+   if(!playing)return;
+   drawScene(index);
+   index=(index+1)%scenes.length;
+   previewTimer=setTimeout(next,3000);
+  }
+  next();
+  setStatus("Playing video preview with AI voice...");
+ }catch(error){
+  stopPreview();
+  setStatus("Preview error: "+error.message);
  }
- next();
 }
 
 function stopPreview(){
  playing=false;
  clearTimeout(previewTimer);
- clearTimeout(exportTimer);
  stopVoice();
  setStatus("Preview stopped.");
 }
 
-function exportVideo(){
+async function exportVideo(){
  if(!scenes.length){setStatus("Generate scenes first.");return}
-
  if(!window.MediaRecorder||!canvas.captureStream){
   setStatus("Video export is not supported in this browser.");
   return;
  }
 
  stopPreview();
+ setStatus("Generating narration for export...");
 
- const stream=canvas.captureStream(30);
+ let audioContext;
+ let stream;
  let recorder;
+ let audio;
 
  try{
-  recorder=new MediaRecorder(stream,{mimeType:"video/webm"});
- }catch(e){
-  recorder=new MediaRecorder(stream);
- }
+  const text=document.getElementById("script").value.trim();
+  const blob=await generateSpeech(text);
+  const audioURL=URL.createObjectURL(blob);
 
- const chunks=[];
+  audio=new Audio(audioURL);
+  audioContext=new AudioContext();
+  await audioContext.resume();
 
- recorder.ondataavailable=e=>{
-  if(e.data.size)chunks.push(e.data);
- };
+  const source=audioContext.createMediaElementSource(audio);
+  const destination=audioContext.createMediaStreamDestination();
 
- recorder.onstop=()=>{
-  const blob=new Blob(chunks,{type:"video/webm"});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement("a");
+  source.connect(destination);
+  source.connect(audioContext.destination);
 
-  a.href=url;
-  a.download="Jawad-AI-Video.webm";
-  a.click();
+  stream=canvas.captureStream(30);
+  destination.stream.getAudioTracks().forEach(track=>stream.addTrack(track));
 
-  setTimeout(()=>URL.revokeObjectURL(url),1000);
-  stream.getTracks().forEach(track=>track.stop());
-  setStatus("Video exported. Narration is not included yet.");
- };
-
- recorder.start();
-
- let index=0;
- const duration=Number(document.getElementById("duration").value);
- const sceneTime=duration/scenes.length;
-
- function next(){
-  if(index>=scenes.length){
-   recorder.stop();
-   return;
+  try{
+   recorder=new MediaRecorder(stream,{mimeType:"video/webm"});
+  }catch(e){
+   recorder=new MediaRecorder(stream);
   }
 
-  drawScene(index);
-  index++;
-  exportTimer=setTimeout(next,sceneTime*1000);
- }
+  const chunks=[];
+  recorder.ondataavailable=e=>{
+   if(e.data.size)chunks.push(e.data);
+  };
 
- setStatus("Exporting video...");
- next();
+  recorder.onstop=()=>{
+   const videoBlob=new Blob(chunks,{type:"video/webm"});
+   const downloadURL=URL.createObjectURL(videoBlob);
+   const a=document.createElement("a");
+   a.href=downloadURL;
+   a.download="Jawad-AI-Video.webm";
+   a.click();
+
+   setTimeout(()=>URL.revokeObjectURL(downloadURL),2000);
+   URL.revokeObjectURL(audioURL);
+   stream.getTracks().forEach(track=>track.stop());
+   audioContext.close();
+   setStatus("Video exported with narration!");
+  };
+
+  recorder.start();
+
+  let index=0;
+  const duration=Number(document.getElementById("duration").value);
+  const sceneTime=duration/scenes.length;
+  let visualFinished=false;
+  let audioFinished=false;
+  let stopped=false;
+
+  function finishIfReady(){
+   if(visualFinished&&audioFinished&&!stopped){
+    stopped=true;
+    recorder.stop();
+   }
+  }
+
+  audio.onended=()=>{
+   audioFinished=true;
+   finishIfReady();
+  };
+
+  audio.onerror=()=>{
+   audioFinished=true;
+   finishIfReady();
+  };
+
+  function next(){
+   if(index>=scenes.length){
+    visualFinished=true;
+    finishIfReady();
+    return;
+   }
+
+   drawScene(index);
+   index++;
+   setTimeout(next,sceneTime*1000);
+  }
+
+  audio.play().catch(()=>{
+   audioFinished=true;
+   finishIfReady();
+  });
+
+  setStatus("Exporting video with AI narration...");
+  next();
+
+ }catch(error){
+  if(stream)stream.getTracks().forEach(track=>track.stop());
+  if(audioContext)audioContext.close();
+  setStatus("Export error: "+error.message);
+ }
 }
+
+loadAIVoices();
 </script>
 </body>
 </html>
