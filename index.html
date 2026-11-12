@@ -5,63 +5,32 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Jawad AI Studio Pro</title>
-
 <style>
 *{box-sizing:border-box}
-body{
- margin:0;padding:16px;background:#101321;
- color:white;font-family:Arial,sans-serif
-}
+body{margin:0;background:#10131d;color:#fff;font-family:Arial,sans-serif;padding:16px}
 .container{max-width:850px;margin:auto}
-h1{text-align:center;color:#65d8ff}
-.subtitle{text-align:center;color:#aaa}
-.panel{
- background:#1c2235;padding:16px;
- border-radius:14px;margin:15px 0
-}
-label{display:block;margin:12px 0 6px}
-textarea,select{
- width:100%;padding:12px;border:1px solid #414b67;
- border-radius:9px;background:#111729;
- color:white;font-size:15px
-}
-textarea{height:150px;resize:vertical}
-button{
- width:100%;padding:13px;margin-top:10px;
- border:0;border-radius:9px;background:#168ed1;
- color:white;font-size:16px;font-weight:bold
-}
-button.secondary{background:#39445e}
-#status{color:#72d8ff;text-align:center;margin:12px}
-#canvas{
- width:100%;height:auto;background:#080b12;
- border-radius:12px;display:block
-}
-.scene{
- background:#111729;padding:10px;
- border-radius:10px;margin-top:12px
-}
-.scene img{
- width:100%;border-radius:8px;display:block
-}
-.small{font-size:12px;color:#aaa}
+h1{text-align:center;color:#7dd3fc}
+.panel{background:#1b2030;padding:16px;border-radius:14px;margin:14px 0}
+label{display:block;margin:12px 0 6px;color:#cbd5e1}
+textarea,select,input,button{width:100%;padding:12px;border-radius:9px;border:1px solid #39445c;background:#111827;color:white;font-size:15px}
+textarea{min-height:140px;resize:vertical}
+button{background:#087eeb;border:0;font-weight:bold;margin-top:12px;cursor:pointer}
+button:disabled{opacity:.5}
+.secondary{background:#374151}
+#status{color:#7dd3fc;white-space:pre-wrap;line-height:1.5}
+canvas{width:100%;max-height:520px;background:#000;border-radius:12px;margin-top:12px}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-@media(max-width:500px){
- .row{grid-template-columns:1fr}
-}
+a{color:#7dd3fc}
+small{color:#aab4c8}
 </style>
 </head>
-
 <body>
 <div class="container">
-
-<h1>Jawad AI Studio Pro</h1>
-<p class="subtitle">AI Explainer Video Creator</p>
+<h1>🎬 Jawad AI Studio Pro</h1>
 
 <div class="panel">
-
-<label>Your Script</label>
-<textarea id="script" placeholder="Write your video script here..."></textarea>
+<label>Your video script</label>
+<textarea id="script" placeholder="Paste your complete video script here..."></textarea>
 
 <div class="row">
 <div>
@@ -71,629 +40,452 @@ button.secondary{background:#39445e}
 <option value="hi">Hindi</option>
 </select>
 </div>
-
 <div>
-<label>Voice Type</label>
-<select id="voiceType">
-<option value="female">Female</option>
-<option value="male">Male</option>
+<label>Voice gender</label>
+<select id="gender">
+<option value="all">Male + Female</option>
+<option value="Female">Female</option>
+<option value="Male">Male</option>
 </select>
 </div>
 </div>
 
-<label>Available Phone Voice</label>
-<select id="voiceSelect">
+<label>AI Voice</label>
+<select id="voice">
 <option value="">Loading voices...</option>
 </select>
-<p class="small">Voice options depend on voices installed on your phone.</p>
+<button class="secondary" id="refreshVoices">Refresh voices</button>
 
 <div class="row">
 <div>
-<label>Video Format</label>
+<label>Video format</label>
 <select id="format">
-<option value="landscape">16:9 Landscape</option>
-<option value="portrait">9:16 Portrait Shorts</option>
+<option value="portrait">Portrait (9:16)</option>
+<option value="landscape">Landscape (16:9)</option>
 </select>
 </div>
-
 <div>
-<label>Video Duration</label>
+<label>Video duration (minimum)</label>
 <select id="duration">
-<option value="30">30 Seconds</option>
-<option value="60">1 Minute</option>
-<option value="90">1.5 Minutes</option>
-<option value="120">2 Minutes</option>
-<option value="180">3 Minutes</option>
-<option value="300">5 Minutes</option>
+<option value="30">30 seconds</option>
+<option value="60">1 minute</option>
+<option value="90">1.5 minutes</option>
+<option value="120">2 minutes</option>
+<option value="180">3 minutes</option>
+<option value="300">5 minutes</option>
 </select>
 </div>
 </div>
 
-<button onclick="createVideo()">Generate Video Scenes</button>
-<button class="secondary" onclick="playVoice()">Test Voice</button>
-<button class="secondary" onclick="playPreview()">Play Preview + Voice</button>
-<button class="secondary" onclick="stopPreview()">Stop Preview</button>
-<button class="secondary" onclick="exportVideo()">Download Video</button>
-
-<div id="status">Ready to create your video.</div>
-<p class="small">Up to 30 scenes can be generated. Actual scene count depends on your script and available image results.</p>
+<button id="generate">Generate images + AI voice video</button>
+<p id="status">Ready. Paste your script to begin.</p>
 </div>
 
 <div class="panel">
 <h3>Video Preview</h3>
-<canvas id="canvas" width="1280" height="720"></canvas>
+<canvas id="canvas" width="720" height="1280"></canvas>
+<button id="download" disabled>Download video</button>
 </div>
-
-<div class="panel">
-<h3>Generated Images</h3>
-<div id="scenes"></div>
-</div>
-
 </div>
 
 <script>
-const API="https://jawad-ai-api.jawadraja009.workers.dev/";
+const API = "https://jawad-ai-api.jawadraja00999.workers.dev/";
 
-const canvas=document.getElementById("canvas");
-const ctx=canvas.getContext("2d");
+const $ = id => document.getElementById(id);
+const canvas = $("canvas");
+const ctx = canvas.getContext("2d");
 
-let scenes=[];
-let playing=false;
-let previewTimer=null;
-let exportTimer=null;
-let availableVoices=[];
-let exporting=false;
+let voices = [];
+let scenes = [];
+let videoBlob = null;
+let currentImage = null;
 
-function setStatus(message){
- document.getElementById("status").textContent=message;
+function status(message){
+  $("status").textContent = message;
 }
 
-/* VOICE SYSTEM */
+async function loadVoices(){
+  const select = $("voice");
+  select.innerHTML = '<option value="">Loading voices...</option>';
 
-function loadVoices(){
- if(!("speechSynthesis" in window))return;
+  try{
+    const response = await fetch(API + "?action=voices");
+    if(!response.ok) throw new Error("Voice API error: " + response.status);
 
- availableVoices=speechSynthesis.getVoices();
+    const data = await response.json();
+    voices = data.voices || [];
 
- const select=document.getElementById("voiceSelect");
- const lang=document.getElementById("language").value;
-
- const matching=availableVoices.filter(v=>
-  v.lang.toLowerCase().startsWith(lang)
- );
-
- select.innerHTML="";
-
- if(!matching.length){
-  select.innerHTML='<option value="">No matching voices found</option>';
-  return;
- }
-
- matching.forEach(voice=>{
-  const option=document.createElement("option");
-  option.value=voice.name;
-  option.textContent=voice.name+" ("+voice.lang+")";
-  select.appendChild(option);
- });
-}
-
-if("speechSynthesis" in window){
- loadVoices();
- speechSynthesis.onvoiceschanged=loadVoices;
-}
-
-document.getElementById("language")
-.addEventListener("change",loadVoices);
-
-function stopVoice(){
- if("speechSynthesis" in window){
-  speechSynthesis.cancel();
- }
-}
-
-function playVoice(){
- const text=document.getElementById("script").value.trim();
-
- if(!text){
-  setStatus("Please enter your script first.");
-  return;
- }
-
- if(!("speechSynthesis" in window)){
-  setStatus("Speech not supported.");
-  return;
- }
-
- loadVoices();
-
- const selectedName=document.getElementById("voiceSelect").value;
- const voice=availableVoices.find(v=>v.name===selectedName);
-
- if(!voice){
-  setStatus("No voice available. Check phone voice settings.");
-  return;
- }
-
- stopVoice();
-
- const utterance=new SpeechSynthesisUtterance(text);
- utterance.voice=voice;
- utterance.lang=voice.lang;
- utterance.rate=0.92;
- utterance.pitch=1;
-
- utterance.onstart=()=>setStatus("Voice playing: "+voice.name);
- utterance.onend=()=>setStatus("Voice finished.");
- utterance.onerror=()=>setStatus("Voice playback error.");
-
- speechSynthesis.speak(utterance);
-}
-
-/* SCRIPT TO SCENES */
-
-const stopWords=[
- "the","is","are","was","were","and","or","to","of",
- "in","on","a","an","for","with","this","that","it",
- "as","by","from","what","why","how","when","where",
- "who","will","can","could","have","has","had","be",
- "been","your","you","we","they","he","she","his",
- "her","their","our","but","if","so","then",
- "एक","और","का","की","के","है","हैं","को","में",
- "से","यह","वह"
-];
-
-function splitIntoScenes(text){
- const sentences=text
-  .replace(/\n+/g," ")
-  .split(/(?<=[.!?।])\s+/)
-  .map(s=>s.trim())
-  .filter(Boolean);
-
- const result=[];
-
- for(const sentence of sentences){
-  const words=sentence.split(/\s+/);
-
-  for(let i=0;i<words.length;i+=12){
-   const part=words.slice(i,i+12).join(" ");
-   if(part)result.push(part);
-   if(result.length>=30)return result;
+    filterVoices();
+    status("Voices loaded: " + voices.length);
+  }catch(error){
+    select.innerHTML = '<option value="">Could not load voices</option>';
+    status("Voice loading error: " + error.message);
   }
- }
-
- return result;
 }
 
-function buildImageQuery(sentence){
- const words=sentence
-  .replace(/[^\p{L}\p{N}\s]/gu," ")
-  .split(/\s+/)
-  .filter(w=>
-   w.length>2&&!stopWords.includes(w.toLowerCase())
-  );
+function filterVoices(){
+  const language = $("language").value;
+  const gender = $("gender").value;
+  const select = $("voice");
 
- return words.slice(0,7).join(" ") ||
- "technology science nature education";
+  const filtered = voices.filter(v => {
+    const lang = (v.labels?.language || "").toLowerCase();
+    const voiceGender = v.labels?.gender || "";
+
+    const languageMatch = language === "hi"
+      ? lang.startsWith("hi")
+      : lang.startsWith("en");
+
+    const genderMatch = gender === "all" || voiceGender === gender;
+    return languageMatch && genderMatch;
+  });
+
+  select.innerHTML = "";
+
+  filtered.forEach(v => {
+    const option = document.createElement("option");
+    option.value = v.voice_id;
+    option.textContent = v.name;
+    select.appendChild(option);
+  });
+
+  if(!filtered.length){
+    select.innerHTML = '<option value="">No matching voices</option>';
+  }
 }
 
-/* IMAGE SYSTEM */
+$("language").addEventListener("change", filterVoices);
+$("gender").addEventListener("change", filterVoices);
+$("refreshVoices").addEventListener("click", loadVoices);
 
-function normalizeImage(item){
- if(typeof item==="string"){
-  return {image:item};
- }
+function splitScript(text){
+  let parts = text.match(/[^.!?।]+[.!?।]?/g) || [text];
 
- if(!item)return null;
+  parts = parts.map(x => x.trim()).filter(x => x.length > 2);
 
- return {
-  image:item.image||item.url||item.src||"",
-  photographer:item.photographer||"",
-  source:item.source||""
- };
+  if(parts.length > 30){
+    const groupSize = Math.ceil(parts.length / 30);
+    const grouped = [];
+    for(let i=0;i<parts.length;i+=groupSize){
+      grouped.push(parts.slice(i,i+groupSize).join(" "));
+    }
+    parts = grouped;
+  }
+
+  return parts;
 }
 
 async function getImage(query){
- try{
-  const response=await fetch(
-   API+"?query="+encodeURIComponent(query)
-  );
+  const url = API + "?query=" + encodeURIComponent(query);
 
-  if(!response.ok)return null;
-
-  const data=await response.json();
-
-  if(data.images&&data.images.length){
-   return normalizeImage(data.images[0]);
+  const response = await fetch(url);
+  if(!response.ok){
+    throw new Error("Image API error: " + response.status);
   }
 
-  if(data.image){
-   return normalizeImage(data);
+  const data = await response.json();
+
+  if(!data.image){
+    throw new Error("No image returned for: " + query);
   }
 
-  if(data.url){
-   return normalizeImage(data);
-  }
-
- }catch(error){
-  console.error("Image API error:",error);
- }
-
- return null;
+  return data;
 }
 
-function preloadImage(url){
- return new Promise(resolve=>{
-  if(!url){
-   resolve(null);
-   return;
-  }
-
-  const img=new Image();
-  img.crossOrigin="anonymous";
-
-  img.onload=()=>resolve(img);
-  img.onerror=()=>resolve(null);
-
-  img.src=url;
- });
+function loadImage(url){
+  return new Promise((resolve,reject)=>{
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("Image could not load"));
+    img.src = url;
+  });
 }
 
-/* GENERATE SCENES */
+async function prepareScenes(script){
+  const sentences = splitScript(script);
+  scenes = [];
+
+  for(let i=0;i<sentences.length;i++){
+    const sentence = sentences[i];
+    const query = sentence.split(/\s+/).slice(0,8).join(" ");
+
+    status("Finding image " + (i+1) + " of " + sentences.length + "...");
+
+    try{
+      const result = await getImage(query);
+      const img = await loadImage(result.image);
+
+      scenes.push({
+        text: sentence,
+        image: img,
+        description: result.description || ""
+      });
+    }catch(error){
+      console.warn(error);
+      scenes.push({
+        text: sentence,
+        image: null,
+        description: "Image unavailable"
+      });
+    }
+  }
+
+  if(!scenes.some(s => s.image)){
+    throw new Error("No images could be loaded. Check the image API.");
+  }
+}
+
+async function getSpeech(text, voiceId){
+  status("Creating AI voice...");
+
+  const response = await fetch(API,{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      text:text,
+      voiceId:voiceId
+    })
+  });
+
+  if(!response.ok){
+    const message = await response.text();
+    throw new Error("Voice generation failed: " + message.slice(0,250));
+  }
+
+  const type = response.headers.get("content-type") || "";
+
+  if(type.includes("json")){
+    const result = await response.json();
+    throw new Error(result.error || "Worker returned JSON instead of audio.");
+  }
+
+  const blob = await response.blob();
+
+  if(!blob.size){
+    throw new Error("The AI voice file is empty.");
+  }
+
+  return blob;
+}
+
+function drawScene(scene){
+  const w = canvas.width;
+  const h = canvas.height;
+
+  ctx.fillStyle = "#111827";
+  ctx.fillRect(0,0,w,h);
+
+  if(scene && scene.image){
+    const img = scene.image;
+
+    // Blurred background fills the frame.
+    const scaleBg = Math.max(w/img.width,h/img.height);
+    const bgW = img.width*scaleBg;
+    const bgH = img.height*scaleBg;
+
+    ctx.save();
+    ctx.filter = "blur(28px) brightness(0.55)";
+    ctx.drawImage(img,(w-bgW)/2,(h-bgH)/2,bgW,bgH);
+    ctx.restore();
+
+    // Full image stays visible without cropping.
+    const scale = Math.min(w/img.width,h/img.height);
+    const drawW = img.width*scale;
+    const drawH = img.height*scale;
+
+    ctx.drawImage(img,(w-drawW)/2,(h-drawH)/2,drawW,drawH);
+  }
+
+  if(scene){
+    const caption = scene.text;
+    const fontSize = canvas.width > canvas.height ? 34 : 42;
+    ctx.font = "bold " + fontSize + "px Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    const maxWidth = w*0.88;
+    const words = caption.split(/\s+/);
+    const lines = [];
+    let line = "";
+
+    for(const word of words){
+      const test = line ? line+" "+word : word;
+      if(ctx.measureText(test).width > maxWidth && line){
+        lines.push(line);
+        line = word;
+      }else{
+        line = test;
+      }
+    }
+    if(line) lines.push(line);
+
+    const lineHeight = fontSize*1.3;
+    const boxHeight = lines.length*lineHeight + 42;
+    const boxY = h - boxHeight - h*0.07;
+
+    ctx.fillStyle = "rgba(0,0,0,.68)";
+    ctx.fillRect(w*0.04,boxY,w*0.92,boxHeight);
+
+    ctx.fillStyle = "#ffffff";
+    lines.forEach((line,index)=>{
+      ctx.fillText(
+        line,
+        w/2,
+        boxY + 24 + lineHeight*(index+0.5),
+        maxWidth
+      );
+    });
+  }
+}
 
 async function createVideo(){
- const text=document.getElementById("script").value.trim();
+  const script = $("script").value.trim();
+  const voiceId = $("voice").value;
 
- if(!text){
-  setStatus("Please write a script first.");
-  return;
- }
+  if(!script){
+    throw new Error("Please paste your video script first.");
+  }
 
- stopPreview();
- scenes=[];
+  if(!voiceId){
+    throw new Error("Please select an AI voice.");
+  }
 
- const sentences=splitIntoScenes(text);
- const sceneBox=document.getElementById("scenes");
+  if(!window.MediaRecorder || !canvas.captureStream){
+    throw new Error("This browser does not support video recording. Try Chrome.");
+  }
 
- sceneBox.innerHTML="";
+  if($("format").value === "portrait"){
+    canvas.width = 720;
+    canvas.height = 1280;
+  }else{
+    canvas.width = 1280;
+    canvas.height = 720;
+  }
 
- if(!sentences.length){
-  setStatus("No scenes found.");
-  return;
- }
+  $("download").disabled = true;
+  videoBlob = null;
 
- for(let i=0;i<sentences.length;i++){
+  await prepareScenes(script);
 
-  setStatus(
-   "Finding matching images: "+(i+1)+" / "+sentences.length
+  const speechBlob = await getSpeech(script,voiceId);
+
+  status("Preparing voice and video...");
+
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if(!AudioContextClass){
+    throw new Error("Audio recording is not supported in this browser.");
+  }
+
+  const audioContext = new AudioContextClass();
+  await audioContext.resume();
+
+  const audioBuffer = await audioContext.decodeAudioData(
+    await speechBlob.arrayBuffer()
   );
 
-  const query=buildImageQuery(sentences[i]);
-  const imageData=await getImage(query);
+  const audioDestination = audioContext.createMediaStreamDestination();
+  const audioSource = audioContext.createBufferSource();
 
-  const imageUrl=imageData?.image||"";
-  const loadedImage=await preloadImage(imageUrl);
+  audioSource.buffer = audioBuffer;
+  audioSource.connect(audioDestination);
 
-  const scene={
-   text:sentences[i],
-   image:imageUrl,
-   img:loadedImage,
-   photo:imageData?.photographer||"",
-   source:imageData?.source||""
+  const canvasStream = canvas.captureStream(30);
+  const combinedStream = new MediaStream([
+    ...canvasStream.getVideoTracks(),
+    ...audioDestination.stream.getAudioTracks()
+  ]);
+
+  const mimeTypes = [
+    "video/webm;codecs=vp9,opus",
+    "video/webm;codecs=vp8,opus",
+    "video/webm"
+  ];
+
+  const mimeType = mimeTypes.find(type => MediaRecorder.isTypeSupported(type));
+
+  if(!mimeType){
+    throw new Error("This browser cannot create a supported video file.");
+  }
+
+  const recorder = new MediaRecorder(combinedStream,{mimeType});
+  const chunks = [];
+
+  recorder.ondataavailable = event => {
+    if(event.data && event.data.size) chunks.push(event.data);
   };
 
-  scenes.push(scene);
-
-  const div=document.createElement("div");
-  div.className="scene";
-
-  if(loadedImage){
-   const img=document.createElement("img");
-   img.src=imageUrl;
-   img.alt=sentences[i];
-   div.appendChild(img);
-  }else{
-   const error=document.createElement("p");
-   error.textContent="Image not found for this scene.";
-   div.appendChild(error);
-  }
-
-  const caption=document.createElement("p");
-  caption.textContent=sentences[i];
-  div.appendChild(caption);
-
-  if(scene.photo){
-   const credit=document.createElement("p");
-   credit.className="small";
-   credit.textContent="Photo: "+scene.photo;
-   div.appendChild(credit);
-  }
-
-  sceneBox.appendChild(div);
- }
-
- setCanvasSize();
-
- if(scenes.length){
-  drawScene(0);
-  setStatus(
-   "Done! "+scenes.length+" scenes generated."
-  );
- }else{
-  setStatus("No scenes generated.");
- }
-}
-
-/* VIDEO SIZE */
-
-function setCanvasSize(){
- const format=document.getElementById("format").value;
-
- if(format==="portrait"){
-  canvas.width=720;
-  canvas.height=1280;
- }else{
-  canvas.width=1280;
-  canvas.height=720;
- }
-
- if(scenes.length)drawScene(0);
-}
-
-document.getElementById("format")
-.addEventListener("change",setCanvasSize);
-
-/* IMAGE FITTING */
-
-function drawCoverBackground(img){
- const scale=Math.max(
-  canvas.width/img.width,
-  canvas.height/img.height
- );
-
- const w=img.width*scale;
- const h=img.height*scale;
-
- const x=(canvas.width-w)/2;
- const y=(canvas.height-h)/2;
-
- ctx.save();
- ctx.filter="blur(25px)";
- ctx.drawImage(img,x,y,w,h);
- ctx.restore();
-
- ctx.fillStyle="rgba(0,0,0,0.30)";
- ctx.fillRect(0,0,canvas.width,canvas.height);
-}
-
-function drawFullImage(img){
- const maxW=canvas.width*0.94;
- const maxH=canvas.height*0.68;
-
- const scale=Math.min(
-  maxW/img.width,
-  maxH/img.height
- );
-
- const w=img.width*scale;
- const h=img.height*scale;
-
- const x=(canvas.width-w)/2;
- const y=(canvas.height*0.38)-(h/2);
-
- ctx.drawImage(img,x,y,w,h);
-}
-
-/* CAPTIONS */
-
-function drawCaption(text){
- const maxWidth=canvas.width*0.88;
- const fontSize=canvas.width>800?38:28;
-
- ctx.font="bold "+fontSize+"px Arial";
- ctx.textAlign="center";
- ctx.textBaseline="middle";
-
- const words=text.split(/\s+/);
- const lines=[];
- let line="";
-
- for(const word of words){
-  const test=line?line+" "+word:word;
-
-  if(ctx.measureText(test).width>maxWidth&&line){
-   lines.push(line);
-   line=word;
-  }else{
-   line=test;
-  }
- }
-
- if(line)lines.push(line);
-
- const lineHeight=fontSize*1.3;
- const maxLines=5;
- const visibleLines=lines.slice(0,maxLines);
-
- const blockHeight=visibleLines.length*lineHeight;
- const startY=canvas.height*0.76-blockHeight/2;
-
- ctx.fillStyle="rgba(0,0,0,0.72)";
- ctx.fillRect(
-  0,canvas.height*0.67,
-  canvas.width,canvas.height*0.33
- );
-
- ctx.fillStyle="white";
-
- visibleLines.forEach((line,i)=>{
-  ctx.fillText(
-   line,
-   canvas.width/2,
-   startY+i*lineHeight+lineHeight/2
-  );
- });
-}
-
-/* DRAW SCENE */
-
-function drawScene(index){
- if(!scenes.length)return;
-
- const scene=scenes[index];
-
- ctx.clearRect(0,0,canvas.width,canvas.height);
- ctx.fillStyle="#080b12";
- ctx.fillRect(0,0,canvas.width,canvas.height);
-
- if(scene.img){
-  drawCoverBackground(scene.img);
-  drawFullImage(scene.img);
- }
-
- drawCaption(scene.text);
-}
-
-/* PREVIEW */
-
-function playPreview(){
- if(!scenes.length){
-  setStatus("Generate scenes first.");
-  return;
- }
-
- stopPreview();
- playing=true;
-
- playVoice();
-
- let index=0;
- const duration=Number(
-  document.getElementById("duration").value
- );
-
- const sceneTime=duration/scenes.length;
-
- function next(){
-  if(!playing)return;
-
-  drawScene(index);
-  index=(index+1)%scenes.length;
-
-  previewTimer=setTimeout(next,sceneTime*1000);
- }
-
- next();
-}
-
-function stopPreview(){
- playing=false;
-
- clearTimeout(previewTimer);
- clearTimeout(exportTimer);
-
- stopVoice();
-
- if(!exporting){
-  setStatus("Preview stopped.");
- }
-}
-
-/* EXPORT VIDEO */
-
-function exportVideo(){
- if(!scenes.length){
-  setStatus("Generate scenes first.");
-  return;
- }
-
- if(!window.MediaRecorder||!canvas.captureStream){
-  setStatus("Video export is not supported in this browser.");
-  return;
- }
-
- stopPreview();
- setCanvasSize();
-
- const duration=Number(
-  document.getElementById("duration").value
- );
-
- const sceneTime=duration/scenes.length;
-
- drawScene(0);
-
- const stream=canvas.captureStream(30);
- let recorder;
-
- try{
-  recorder=new MediaRecorder(stream,{
-   mimeType:"video/webm;codecs=vp8"
+  const stopped = new Promise((resolve,reject)=>{
+    recorder.onstop = resolve;
+    recorder.onerror = () => reject(new Error("Video recording failed."));
   });
- }catch(e){
-  try{
-   recorder=new MediaRecorder(stream);
-  }catch(error){
-   setStatus("Video recording is not supported.");
-   stream.getTracks().forEach(t=>t.stop());
-   return;
-  }
- }
 
- const chunks=[];
+  const targetDuration = Number($("duration").value);
+  const totalDuration = Math.max(targetDuration,audioBuffer.duration);
 
- recorder.ondataavailable=e=>{
-  if(e.data.size)chunks.push(e.data);
- };
+  recorder.start(1000);
+  audioSource.start();
 
- recorder.onerror=()=>{
-  exporting=false;
-  setStatus("Video export failed. Try again.");
-  stream.getTracks().forEach(t=>t.stop());
- };
+  status("Recording video with AI voice...");
 
- recorder.onstop=()=>{
-  exporting=false;
+  const startTime = performance.now();
 
-  const blob=new Blob(chunks,{type:"video/webm"});
-  const url=URL.createObjectURL(blob);
+  while(true){
+    const elapsed = (performance.now()-startTime)/1000;
+    const progress = Math.min(elapsed/totalDuration,0.999);
+    const index = Math.min(
+      scenes.length-1,
+      Math.floor(progress*scenes.length)
+    );
 
-  const a=document.createElement("a");
-  a.href=url;
-  a.download="Jawad-AI-Video.webm";
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
+    drawScene(scenes[index]);
 
-  setTimeout(()=>URL.revokeObjectURL(url),5000);
+    if(elapsed >= totalDuration) break;
 
-  stream.getTracks().forEach(track=>track.stop());
-
-  setStatus(
-   "Video exported successfully. Note: downloaded video does not include voice yet."
-  );
- };
-
- exporting=true;
- recorder.start();
-
- let index=0;
-
- function next(){
-  if(index>=scenes.length){
-   recorder.stop();
-   return;
+    await new Promise(resolve => requestAnimationFrame(resolve));
   }
 
-  drawScene(index);
-  index++;
+  recorder.stop();
+  await stopped;
 
-  exportTimer=setTimeout(next,sceneTime*1000);
- }
+  combinedStream.getTracks().forEach(track=>track.stop());
+  await audioContext.close();
 
- setStatus("Exporting video... Please wait.");
- next();
+  videoBlob = new Blob(chunks,{type:mimeType});
+  if(!videoBlob.size){
+    throw new Error("Video file could not be created.");
+  }
+
+  const extension = "webm";
+  const downloadUrl = URL.createObjectURL(videoBlob);
+  $("download").disabled = false;
+  $("download").onclick = () => {
+    const link = document.createElement("a");
+    link.href = downloadUrl;
+    link.download = "Jawad-AI-Video." + extension;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  };
+
+  status("Done! Your video includes the AI voice. Tap Download video.");
 }
-</script>
 
+$("generate").addEventListener("click",async()=>{
+  const button = $("generate");
+  button.disabled = true;
+
+  try{
+    await createVideo();
+  }catch(error){
+    console.error(error);
+    status("Error: " + error.message);
+  }finally{
+    button.disabled = false;
+  }
+});
+
+loadVoices();
+</script>
 </body>
 </html>
