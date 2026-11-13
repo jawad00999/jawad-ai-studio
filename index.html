@@ -20,8 +20,8 @@ button:disabled{opacity:.5}
 #status{color:#7dd3fc;white-space:pre-wrap;line-height:1.5}
 canvas{width:100%;max-height:520px;background:#000;border-radius:12px;margin-top:12px}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-small{color:#aab4c8}
-.mode-note{font-size:13px;color:#aab4c8;line-height:1.5;margin-top:8px}
+small,.mode-note{color:#aab4c8}
+.mode-note{font-size:13px;line-height:1.5;margin-top:8px}
 </style>
 </head>
 <body>
@@ -29,15 +29,15 @@ small{color:#aab4c8}
 <h1>🎬 Jawad AI Studio Pro</h1>
 
 <div class="panel">
+
 <label>Choose Video Mode</label>
 <select id="mode">
 <option value="photo">📸 Photo Video</option>
 <option value="cartoon">🎨 Cartoon Video</option>
 <option value="vegetable">🥔 Talking Vegetables</option>
 </select>
-<p class="mode-note" id="modeNote">
-Create videos using images, AI voice and captions.
-</p>
+
+<p class="mode-note" id="modeNote"></p>
 
 <div id="vegetableOptions" style="display:none">
 <label>Select Character</label>
@@ -48,24 +48,22 @@ Create videos using images, AI voice and captions.
 <option value="carrot">🥕 Carrot</option>
 <option value="onion">🧅 Onion</option>
 </select>
-<p class="mode-note">
-Your selected vegetable will become an animated talking character.
-</p>
 </div>
 
-<label>Your video script</label>
+<label>Your Video Script</label>
 <textarea id="script" placeholder="Paste your complete video script here..."></textarea>
 
 <div class="row">
 <div>
 <label>Language</label>
-<select id="language">
+<select id="language" disabled>
 <option value="en">English</option>
 <option value="hi">Hindi</option>
 </select>
 </div>
+
 <div>
-<label>Voice gender</label>
+<label>Voice Gender</label>
 <select id="gender">
 <option value="all">Male + Female</option>
 <option value="Female">Female</option>
@@ -78,18 +76,19 @@ Your selected vegetable will become an animated talking character.
 <select id="voice">
 <option value="">Loading voices...</option>
 </select>
-<button class="secondary" id="refreshVoices">Refresh voices</button>
+
+<button class="secondary" id="refreshVoices">Refresh Voices</button>
 
 <div class="row">
 <div>
-<label>Video format</label>
+<label>Video Format</label>
 <select id="format">
 <option value="portrait">Portrait (9:16)</option>
 <option value="landscape">Landscape (16:9)</option>
 </select>
 </div>
 <div>
-<label>Video duration</label>
+<label>Video Duration</label>
 <select id="duration">
 <option value="30">30 seconds</option>
 <option value="60">1 minute</option>
@@ -108,620 +107,630 @@ Your selected vegetable will become an animated talking character.
 <div class="panel">
 <h3>Video Preview</h3>
 <canvas id="canvas" width="720" height="1280"></canvas>
-<button id="download" disabled>Download video</button>
+<button id="download" disabled>Download Video</button>
 </div>
 </div>
 
 <script>
-const API = "https://jawad-ai-api.jawadraja009.workers.dev/";
+const API="https://jawad-ai-api.jawadraja0099.workers.dev/";
 
-const $ = id => document.getElementById(id);
-const canvas = $("canvas");
-const ctx = canvas.getContext("2d");
+const $=id=>document.getElementById(id);
+const canvas=$("canvas");
+const ctx=canvas.getContext("2d");
 
-let voices = [];
-let scenes = [];
-let videoBlob = null;
+let voices=[];
+let scenes=[];
+let videoBlob=null;
+let downloadUrl=null;
+let loadingVoices=false;
 
 function status(message){
-  $("status").textContent = message;
+ $("status").textContent=message;
 }
 
-$("mode").addEventListener("change",()=>{
-  const mode = $("mode").value;
-  $("vegetableOptions").style.display =
-    mode === "vegetable" ? "block" : "none";
+function currentMode(){
+ return $("mode").value;
+}
 
-  const notes = {
-    photo:"Create videos using images, AI voice and captions.",
-    cartoon:"Search for cartoon-style images and create a video.",
-    vegetable:"Create animated talking vegetable characters with AI voice."
-  };
+function currentLanguage(){
+ return currentMode()==="photo"?"en":"hi";
+}
 
-  $("modeNote").textContent = notes[mode];
-});
+function updateMode(){
+ const mode=currentMode();
+
+ $("vegetableOptions").style.display=
+  mode==="vegetable"?"block":"none";
+
+ $("language").value=currentLanguage();
+
+ $("language").disabled=true;
+
+ $("modeNote").textContent={
+  photo:"English AI voice with photo scenes.",
+  cartoon:"Hindi AI voice with cartoon-style images.",
+  vegetable:"Hindi AI voice for animated vegetable characters."
+ }[mode];
+
+ loadVoices();
+}
 
 async function loadVoices(){
-  const select = $("voice");
-  select.innerHTML = '<option value="">Loading voices...</option>';
+ if(loadingVoices)return;
 
-  try{
-    const response = await fetch(API + "?action=voices");
-    if(!response.ok) throw new Error("Voice API error: " + response.status);
+ loadingVoices=true;
 
-    const data = await response.json();
-    voices = data.voices || [];
-    filterVoices();
+ const select=$("voice");
+ select.innerHTML='<option value="">Loading voices...</option>';
 
-    status("Voices loaded: " + voices.length);
-  }catch(error){
-    select.innerHTML = '<option value="">Could not load voices</option>';
-    status("Voice loading error: " + error.message);
+ try{
+  const mode=currentMode();
+  const character=$("character").value;
+
+  const url=API+"?action=voices&mode="+
+   encodeURIComponent(mode)+
+   "&character="+encodeURIComponent(character);
+
+  const response=await fetch(url);
+
+  if(!response.ok)throw new Error("Voice API error "+response.status);
+
+  const data=await response.json();
+
+  if(mode!==currentMode()){
+   return;
   }
+
+  voices=data.voices||[];
+
+  filterVoices();
+
+  status(voices.length?
+   "Voices loaded successfully.":
+   "No matching voices found. Check FreeTTS voice availability.");
+
+ }catch(error){
+  select.innerHTML='<option value="">Could not load voices</option>';
+  status("Voice error: "+error.message);
+ }finally{
+  loadingVoices=false;
+ }
 }
 
 function filterVoices(){
-  const language = $("language").value;
-  const gender = $("gender").value;
-  const select = $("voice");
+ const gender=$("gender").value;
+ const select=$("voice");
 
-  const filtered = voices.filter(v => {
-    const lang = (v.labels?.language || "").toLowerCase();
-    const voiceGender = v.labels?.gender || "";
+ const filtered=voices.filter(v=>{
+  const voiceGender=v.labels?.gender||"";
+  return gender==="all"||
+   voiceGender.toLowerCase()===gender.toLowerCase();
+ });
 
-    const languageMatch = language === "hi"
-      ? lang.startsWith("hi")
-      : lang.startsWith("en");
+ select.innerHTML="";
 
-    const genderMatch = gender === "all" || voiceGender === gender;
-    return languageMatch && genderMatch;
-  });
+ filtered.forEach(v=>{
+  const option=document.createElement("option");
+  option.value=v.voice_id;
+  option.textContent=v.name;
+  select.appendChild(option);
+ });
 
-  select.innerHTML = "";
-
-  filtered.forEach(v => {
-    const option = document.createElement("option");
-    option.value = v.voice_id;
-    option.textContent = v.name;
-    select.appendChild(option);
-  });
-
-  if(!filtered.length){
-    select.innerHTML = '<option value="">No matching voices</option>';
-  }
+ if(!filtered.length){
+  select.innerHTML='<option value="">No matching voices</option>';
+ }
 }
 
-$("language").addEventListener("change",filterVoices);
+$("mode").addEventListener("change",updateMode);
+$("character").addEventListener("change",loadVoices);
 $("gender").addEventListener("change",filterVoices);
 $("refreshVoices").addEventListener("click",loadVoices);
 
 function splitScript(text){
-  let parts = text.match(/[^.!?।]+[.!?।]?/g) || [text];
-  parts = parts.map(x => x.trim()).filter(x => x.length > 2);
+ let parts=text.match(/[^.!?।]+[.!?।]?/g)||[text];
+ parts=parts.map(x=>x.trim()).filter(x=>x.length>2);
 
-  if(parts.length > 30){
-    const groupSize = Math.ceil(parts.length / 30);
-    const grouped = [];
-
-    for(let i=0;i<parts.length;i+=groupSize){
-      grouped.push(parts.slice(i,i+groupSize).join(" "));
-    }
-
-    parts = grouped;
+ if(parts.length>30){
+  const groupSize=Math.ceil(parts.length/30);
+  const grouped=[];
+  for(let i=0;i<parts.length;i+=groupSize){
+   grouped.push(parts.slice(i,i+groupSize).join(" "));
   }
+  parts=grouped;
+ }
 
-  return parts;
+ return parts;
 }
 
 async function getImage(query){
-  const url = API + "?query=" + encodeURIComponent(query);
-  const response = await fetch(url);
+ const response=await fetch(
+  API+"?query="+encodeURIComponent(query)
+ );
 
-  if(!response.ok){
-    throw new Error("Image API error: " + response.status);
-  }
+ if(!response.ok)throw new Error("Image API error");
 
-  const data = await response.json();
+ const data=await response.json();
 
-  if(!data.image){
-    throw new Error("No image returned for: " + query);
-  }
+ if(!data.image)throw new Error("No image found");
 
-  return data;
+ return data;
 }
 
 function loadImage(url){
-  return new Promise((resolve,reject)=>{
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error("Image could not load"));
-    img.src = url;
-  });
+ return new Promise((resolve,reject)=>{
+  const img=new Image();
+  img.crossOrigin="anonymous";
+  img.onload=()=>resolve(img);
+  img.onerror=()=>reject(new Error("Image could not load"));
+  img.src=url;
+ });
 }
 
 async function prepareScenes(script){
-  const sentences = splitScript(script);
-  scenes = [];
+ const sentences=splitScript(script);
+ scenes=[];
 
-  const mode = $("mode").value;
+ const mode=currentMode();
 
-  if(mode === "vegetable"){
-    scenes = sentences.map(text=>({
-      text,
-      image:null
-    }));
-    return;
+ if(mode==="vegetable"){
+  scenes=sentences.map(text=>({text,image:null}));
+  return;
+ }
+
+ for(let i=0;i<sentences.length;i++){
+  const sentence=sentences[i];
+  let query=sentence.split(/\s+/).slice(0,8).join(" ");
+
+  if(mode==="cartoon"){
+   query="3D cartoon illustration "+query;
   }
 
-  for(let i=0;i<sentences.length;i++){
-    const sentence = sentences[i];
-    let query = sentence.split(/\s+/).slice(0,8).join(" ");
+  status("Finding image "+(i+1)+" of "+sentences.length+"...");
 
-    if(mode === "cartoon"){
-      query = "3D cartoon illustration " + query;
-    }
+  try{
+   const result=await getImage(query);
+   const img=await loadImage(result.image);
 
-    status("Finding image " + (i+1) + " of " + sentences.length + "...");
-
-    try{
-      const result = await getImage(query);
-      const img = await loadImage(result.image);
-
-      scenes.push({
-        text:sentence,
-        image:img,
-        description:result.description || ""
-      });
-    }catch(error){
-      console.warn(error);
-      scenes.push({
-        text:sentence,
-        image:null
-      });
-    }
+   scenes.push({
+    text:sentence,
+    image:img
+   });
+  }catch(error){
+   console.warn(error);
+   scenes.push({text:sentence,image:null});
   }
+ }
 
-  if(!scenes.some(s=>s.image)){
-    throw new Error("No images could be loaded. Check the image API.");
-  }
+ if(!scenes.some(s=>s.image)){
+  throw new Error("No images could be loaded.");
+ }
 }
 
 async function getSpeech(text,voiceId){
-  status("Creating AI voice...");
+ status("Creating AI voice...");
 
-  const response = await fetch(API,{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({
-      text:text,
-      voiceId:voiceId
-    })
-  });
+ const response=await fetch(API,{
+  method:"POST",
+  headers:{"Content-Type":"application/json"},
+  body:JSON.stringify({text,voiceId})
+ });
 
-  if(!response.ok){
-    const message = await response.text();
-    throw new Error("Voice generation failed: " + message.slice(0,250));
-  }
+ if(!response.ok){
+  const message=await response.text();
+  throw new Error("Voice generation failed: "+message.slice(0,200));
+ }
 
-  const type = response.headers.get("content-type") || "";
+ const type=response.headers.get("content-type")||"";
 
-  if(type.includes("json")){
-    const result = await response.json();
-    throw new Error(result.error || "Worker returned JSON instead of audio.");
-  }
+ if(type.includes("json")){
+  const data=await response.json();
+  throw new Error(data.error||"Audio generation failed.");
+ }
 
-  const blob = await response.blob();
+ const blob=await response.blob();
 
-  if(!blob.size){
-    throw new Error("The AI voice file is empty.");
-  }
+ if(!blob.size)throw new Error("Empty audio file.");
 
-  return blob;
+ return blob;
 }
 
 function drawCaption(text){
-  const w=canvas.width;
-  const h=canvas.height;
-  const fontSize=w>h?34:42;
+ const w=canvas.width;
+ const h=canvas.height;
+ const fontSize=w>h?34:42;
 
-  ctx.font="bold "+fontSize+"px Arial";
-  ctx.textAlign="center";
-  ctx.textBaseline="middle";
+ ctx.font="bold "+fontSize+"px Arial";
+ ctx.textAlign="center";
+ ctx.textBaseline="middle";
 
-  const maxWidth=w*.88;
-  const words=text.split(/\s+/);
-  const lines=[];
-  let line="";
+ const maxWidth=w*.88;
+ const words=text.split(/\s+/);
+ const lines=[];
+ let line="";
 
-  for(const word of words){
-    const test=line?line+" "+word:word;
-    if(ctx.measureText(test).width>maxWidth && line){
-      lines.push(line);
-      line=word;
-    }else{
-      line=test;
-    }
+ for(const word of words){
+  const test=line?line+" "+word:word;
+  if(ctx.measureText(test).width>maxWidth&&line){
+   lines.push(line);
+   line=word;
+  }else{
+   line=test;
   }
+ }
 
-  if(line)lines.push(line);
+ if(line)lines.push(line);
 
-  const lineHeight=fontSize*1.3;
-  const boxHeight=lines.length*lineHeight+42;
-  const boxY=h-boxHeight-h*.07;
+ const lineHeight=fontSize*1.3;
+ const boxHeight=lines.length*lineHeight+42;
+ const boxY=h-boxHeight-h*.07;
 
-  ctx.fillStyle="rgba(0,0,0,.72)";
-  ctx.fillRect(w*.04,boxY,w*.92,boxHeight);
+ ctx.fillStyle="rgba(0,0,0,.72)";
+ ctx.fillRect(w*.04,boxY,w*.92,boxHeight);
 
-  ctx.fillStyle="#fff";
-  lines.forEach((item,index)=>{
-    ctx.fillText(item,w/2,boxY+24+lineHeight*(index+.5),maxWidth);
-  });
+ ctx.fillStyle="#fff";
+
+ lines.forEach((item,index)=>{
+  ctx.fillText(item,w/2,boxY+24+lineHeight*(index+.5),maxWidth);
+ });
 }
 
 function drawImageScene(scene){
-  const w=canvas.width;
-  const h=canvas.height;
+ const w=canvas.width;
+ const h=canvas.height;
 
-  ctx.fillStyle="#111827";
-  ctx.fillRect(0,0,w,h);
+ ctx.fillStyle="#111827";
+ ctx.fillRect(0,0,w,h);
 
-  if(scene && scene.image){
-    const img=scene.image;
-    const scaleBg=Math.max(w/img.width,h/img.height);
-    const bgW=img.width*scaleBg;
-    const bgH=img.height*scaleBg;
+ if(scene&&scene.image){
+  const img=scene.image;
 
-    ctx.save();
-    ctx.filter="blur(28px) brightness(.55)";
-    ctx.drawImage(img,(w-bgW)/2,(h-bgH)/2,bgW,bgH);
-    ctx.restore();
+  const scaleBg=Math.max(w/img.width,h/img.height);
+  const bgW=img.width*scaleBg;
+  const bgH=img.height*scaleBg;
 
-    const scale=Math.min(w/img.width,h/img.height);
-    const drawW=img.width*scale;
-    const drawH=img.height*scale;
+  ctx.save();
+  ctx.filter="blur(28px) brightness(.55)";
+  ctx.drawImage(img,(w-bgW)/2,(h-bgH)/2,bgW,bgH);
+  ctx.restore();
 
-    ctx.drawImage(img,(w-drawW)/2,(h-drawH)/2,drawW,drawH);
-  }
+  const scale=Math.min(w/img.width,h/img.height);
+  const drawW=img.width*scale;
+  const drawH=img.height*scale;
 
-  if(scene)drawCaption(scene.text);
+  ctx.drawImage(img,(w-drawW)/2,(h-drawH)/2,drawW,drawH);
+ }
+
+ if(scene)drawCaption(scene.text);
 }
 
-/* Animated vegetable characters */
-
 function roundedGradient(x,y,w,h,c1,c2){
-  const g=ctx.createLinearGradient(x,y,x+w,y+h);
-  g.addColorStop(0,c1);
-  g.addColorStop(1,c2);
-  return g;
+ const g=ctx.createLinearGradient(x,y,x+w,y+h);
+ g.addColorStop(0,c1);
+ g.addColorStop(1,c2);
+ return g;
 }
 
 function drawVegetable(type,x,y,size,time,second){
-  const bounce=Math.sin(time*3+(second?2:0))*size*.025;
-  const wave=Math.sin(time*5+(second?1:0))*.35;
+ const bounce=Math.sin(time*3+(second?2:0))*size*.025;
+ const wave=Math.sin(time*5+(second?1:0))*.35;
 
-  ctx.save();
-  ctx.translate(x,y+bounce);
+ ctx.save();
+ ctx.translate(x,y+bounce);
 
-  // Shadow
-  ctx.fillStyle="rgba(0,0,0,.28)";
+ ctx.fillStyle="rgba(0,0,0,.28)";
+ ctx.beginPath();
+ ctx.ellipse(0,size*.57,size*.36,size*.09,0,0,Math.PI*2);
+ ctx.fill();
+
+ ctx.strokeStyle="#263244";
+ ctx.lineWidth=size*.065;
+ ctx.lineCap="round";
+
+ for(let i=-1;i<=1;i+=2){
+  const legWave=Math.sin(time*5+i)*size*.045;
+
   ctx.beginPath();
-  ctx.ellipse(0,size*.57,size*.36,size*.09,0,0,Math.PI*2);
-  ctx.fill();
-
-  // Animated legs
-  ctx.strokeStyle="#263244";
-  ctx.lineWidth=size*.065;
-  ctx.lineCap="round";
-
-  for(let i=-1;i<=1;i+=2){
-    const legWave=Math.sin(time*5+i)*size*.045;
-    ctx.beginPath();
-    ctx.moveTo(i*size*.15,size*.35);
-    ctx.lineTo(i*size*.19+legWave,size*.52);
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.moveTo(i*size*.19+legWave,size*.52);
-    ctx.lineTo(i*size*.27+legWave,size*.53);
-    ctx.stroke();
-  }
-
-  // Arms
-  for(let i=-1;i<=1;i+=2){
-    ctx.beginPath();
-    ctx.moveTo(i*size*.29,0);
-    ctx.lineTo(i*size*.43,-size*.06+wave*size*.12*i);
-    ctx.stroke();
-
-    ctx.fillStyle="#f2bd91";
-    ctx.beginPath();
-    ctx.arc(i*size*.43,-size*.06+wave*size*.12*i,size*.055,0,Math.PI*2);
-    ctx.fill();
-  }
-
-  // Main body
-  let bodyGradient;
-  ctx.beginPath();
-
-  if(type==="tomato"){
-    bodyGradient=roundedGradient(-size*.35,-size*.4,size*.7,size*.85,"#ff8b78","#b91c1c");
-    ctx.moveTo(0,-size*.4);
-    ctx.bezierCurveTo(size*.65,-size*.52,size*.62,size*.28,0,size*.4);
-    ctx.bezierCurveTo(-size*.62,size*.28,-size*.65,-size*.52,0,-size*.4);
-  }else if(type==="pea"){
-    bodyGradient=roundedGradient(-size*.35,-size*.35,size*.7,size*.8,"#b6f58a","#268d32");
-    ctx.ellipse(0,0,size*.35,size*.43,0,0,Math.PI*2);
-  }else if(type==="carrot"){
-    bodyGradient=roundedGradient(-size*.3,-size*.4,size*.6,size*.85,"#ffc15b","#d65b0b");
-    ctx.moveTo(-size*.32,-size*.4);
-    ctx.quadraticCurveTo(size*.34,-size*.45,size*.29,-size*.05);
-    ctx.lineTo(0,size*.47);
-    ctx.lineTo(-size*.29,-size*.05);
-    ctx.closePath();
-  }else if(type==="onion"){
-    bodyGradient=roundedGradient(-size*.35,-size*.4,size*.7,size*.85,"#f6c6ff","#9953bb");
-    ctx.ellipse(0,0,size*.34,size*.44,0,0,Math.PI*2);
-  }else{
-    bodyGradient=roundedGradient(-size*.38,-size*.4,size*.76,size*.85,"#e8c18b","#93602f");
-    ctx.ellipse(0,0,size*.38,size*.43,0,0,Math.PI*2);
-  }
-
-  ctx.fillStyle=bodyGradient;
-  ctx.fill();
-  ctx.strokeStyle="rgba(70,35,15,.25)";
-  ctx.lineWidth=3;
+  ctx.moveTo(i*size*.15,size*.35);
+  ctx.lineTo(i*size*.19+legWave,size*.52);
   ctx.stroke();
 
-  // Green leaves
-  if(type==="tomato" || type==="carrot" || type==="pea"){
-    ctx.fillStyle="#23833b";
-    for(let i=-1;i<=1;i++){
-      ctx.beginPath();
-      ctx.ellipse(i*size*.08,-size*.39,size*.09,size*.19,i*.5,0,Math.PI*2);
-      ctx.fill();
-    }
-  }
+  ctx.beginPath();
+  ctx.moveTo(i*size*.19+legWave,size*.52);
+  ctx.lineTo(i*size*.27+legWave,size*.53);
+  ctx.stroke();
+ }
 
-  // Face
-  const eyeY=-size*.04;
-  const eyeX=size*.125;
+ for(let i=-1;i<=1;i+=2){
+  ctx.beginPath();
+  ctx.moveTo(i*size*.29,0);
+  ctx.lineTo(i*size*.43,-size*.06+wave*size*.12*i);
+  ctx.stroke();
+
+  ctx.fillStyle="#f2bd91";
+  ctx.beginPath();
+  ctx.arc(i*size*.43,-size*.06+wave*size*.12*i,size*.055,0,Math.PI*2);
+  ctx.fill();
+ }
+
+ let bodyGradient;
+ ctx.beginPath();
+
+ if(type==="tomato"){
+  bodyGradient=roundedGradient(-size*.35,-size*.4,size*.7,size*.85,"#ff8b78","#b91c1c");
+  ctx.moveTo(0,-size*.4);
+  ctx.bezierCurveTo(size*.65,-size*.52,size*.62,size*.28,0,size*.4);
+  ctx.bezierCurveTo(-size*.62,size*.28,-size*.65,-size*.52,0,-size*.4);
+ }else if(type==="pea"){
+  bodyGradient=roundedGradient(-size*.35,-size*.35,size*.7,size*.8,"#b6f58a","#268d32");
+  ctx.ellipse(0,0,size*.35,size*.43,0,0,Math.PI*2);
+ }else if(type==="carrot"){
+  bodyGradient=roundedGradient(-size*.3,-size*.4,size*.6,size*.85,"#ffc15b","#d65b0b");
+  ctx.moveTo(-size*.32,-size*.4);
+  ctx.quadraticCurveTo(size*.34,-size*.45,size*.29,-size*.05);
+  ctx.lineTo(0,size*.47);
+  ctx.lineTo(-size*.29,-size*.05);
+  ctx.closePath();
+ }else if(type==="onion"){
+  bodyGradient=roundedGradient(-size*.35,-size*.4,size*.7,size*.85,"#f6c6ff","#9953bb");
+  ctx.ellipse(0,0,size*.34,size*.44,0,0,Math.PI*2);
+ }else{
+  bodyGradient=roundedGradient(-size*.38,-size*.4,size*.76,size*.85,"#e8c18b","#93602f");
+  ctx.ellipse(0,0,size*.38,size*.43,0,0,Math.PI*2);
+ }
+
+ ctx.fillStyle=bodyGradient;
+ ctx.fill();
+ ctx.strokeStyle="rgba(70,35,15,.25)";
+ ctx.lineWidth=3;
+ ctx.stroke();
+
+ if(type==="tomato"||type==="carrot"||type==="pea"){
+  ctx.fillStyle="#23833b";
+  for(let i=-1;i<=1;i++){
+   ctx.beginPath();
+   ctx.ellipse(i*size*.08,-size*.39,size*.09,size*.19,i*.5,0,Math.PI*2);
+   ctx.fill();
+  }
+ }
+
+ const eyeY=-size*.04;
+ const eyeX=size*.125;
+
+ ctx.fillStyle="#fff";
+
+ for(let i=-1;i<=1;i+=2){
+  ctx.beginPath();
+  ctx.ellipse(i*eyeX,eyeY,size*.075,size*.095,0,0,Math.PI*2);
+  ctx.fill();
+
+  ctx.fillStyle="#172033";
+  ctx.beginPath();
+  ctx.arc(i*eyeX+size*.018,eyeY+size*.01,size*.039,0,Math.PI*2);
+  ctx.fill();
 
   ctx.fillStyle="#fff";
-  for(let i=-1;i<=1;i+=2){
-    ctx.beginPath();
-    ctx.ellipse(i*eyeX,eyeY,size*.075,size*.095,0,0,Math.PI*2);
-    ctx.fill();
+ }
 
-    ctx.fillStyle="#172033";
-    ctx.beginPath();
-    ctx.arc(i*eyeX+size*.018,eyeY+size*.01,size*.039,0,Math.PI*2);
-    ctx.fill();
-    ctx.fillStyle="#fff";
-  }
+ const mouthOpen=(Math.sin(time*12)+1)/2;
 
-  // Mouth moves during speech
-  const mouthOpen=(Math.sin(time*12)+1)/2;
-  ctx.fillStyle="#651d25";
-  ctx.beginPath();
-  ctx.ellipse(0,size*.17,size*.085,size*(.025+mouthOpen*.045),0,0,Math.PI*2);
-  ctx.fill();
+ ctx.fillStyle="#651d25";
+ ctx.beginPath();
+ ctx.ellipse(0,size*.17,size*.085,size*(.025+mouthOpen*.045),0,0,Math.PI*2);
+ ctx.fill();
 
-  // Cheeks
-  ctx.fillStyle="rgba(255,120,120,.5)";
-  ctx.beginPath();
-  ctx.arc(-size*.23,size*.12,size*.045,0,Math.PI*2);
-  ctx.arc(size*.23,size*.12,size*.045,0,Math.PI*2);
-  ctx.fill();
+ ctx.fillStyle="rgba(255,120,120,.5)";
+ ctx.beginPath();
+ ctx.arc(-size*.23,size*.12,size*.045,0,Math.PI*2);
+ ctx.arc(size*.23,size*.12,size*.045,0,Math.PI*2);
+ ctx.fill();
 
-  ctx.restore();
+ ctx.restore();
 }
 
 function drawVegetableScene(scene,time){
-  const w=canvas.width;
-  const h=canvas.height;
+ const w=canvas.width;
+ const h=canvas.height;
 
-  const bg=ctx.createLinearGradient(0,0,0,h);
-  bg.addColorStop(0,"#173f68");
-  bg.addColorStop(.65,"#3c805b");
-  bg.addColorStop(1,"#193c32");
+ const bg=ctx.createLinearGradient(0,0,0,h);
+ bg.addColorStop(0,"#173f68");
+ bg.addColorStop(.65,"#3c805b");
+ bg.addColorStop(1,"#193c32");
 
-  ctx.fillStyle=bg;
-  ctx.fillRect(0,0,w,h);
+ ctx.fillStyle=bg;
+ ctx.fillRect(0,0,w,h);
 
-  // Decorative lights
-  for(let i=0;i<12;i++){
-    const px=(i*137+time*8)%(w+80)-40;
-    const py=(i*193)%(h*.65);
-    ctx.fillStyle="rgba(255,255,255,.12)";
-    ctx.beginPath();
-    ctx.arc(px,py,12+(i%3)*5,0,Math.PI*2);
-    ctx.fill();
-  }
+ for(let i=0;i<12;i++){
+  const px=(i*137+time*8)%(w+80)-40;
+  const py=(i*193)%(h*.65);
 
-  // Ground
-  ctx.fillStyle="#234c36";
-  ctx.fillRect(0,h*.68,w,h*.32);
+  ctx.fillStyle="rgba(255,255,255,.12)";
+  ctx.beginPath();
+  ctx.arc(px,py,12+(i%3)*5,0,Math.PI*2);
+  ctx.fill();
+ }
 
-  const type=$("character").value;
-  const mainX=w*.5;
-  const mainY=h*.43;
-  const size=Math.min(w*.7,h*.35);
+ ctx.fillStyle="#234c36";
+ ctx.fillRect(0,h*.68,w,h*.32);
 
-  drawVegetable(type,mainX,mainY,size,time,false);
+ const type=$("character").value;
+ const size=Math.min(w*.7,h*.35);
 
-  // Small secondary character for company
-  const companion=type==="potato"?"tomato":
-    type==="tomato"?"pea":
-    type==="pea"?"carrot":
-    type==="carrot"?"onion":"potato";
+ drawVegetable(type,w*.5,h*.43,size,time,false);
 
-  drawVegetable(companion,w*.17,h*.56,size*.43,time,true);
+ const companion={
+  potato:"tomato",
+  tomato:"pea",
+  pea:"carrot",
+  carrot:"onion",
+  onion:"potato"
+ }[type];
 
-  ctx.fillStyle="#fff";
-  ctx.font="bold "+Math.max(22,w*.045)+"px Arial";
-  ctx.textAlign="center";
-  ctx.fillText("Talking Vegetables",w/2,h*.1);
+ drawVegetable(companion,w*.17,h*.56,size*.43,time,true);
 
-  if(scene)drawCaption(scene.text);
+ ctx.fillStyle="#fff";
+ ctx.font="bold "+Math.max(22,w*.045)+"px Arial";
+ ctx.textAlign="center";
+ ctx.fillText("Talking Vegetables",w/2,h*.1);
+
+ if(scene)drawCaption(scene.text);
 }
 
 function drawScene(scene,time){
-  if($("mode").value==="vegetable"){
-    drawVegetableScene(scene,time);
-  }else{
-    drawImageScene(scene);
-  }
+ if(currentMode()==="vegetable"){
+  drawVegetableScene(scene,time);
+ }else{
+  drawImageScene(scene);
+ }
 }
 
 async function createVideo(){
-  const script=$("script").value.trim();
-  const voiceId=$("voice").value;
+ const script=$("script").value.trim();
+ const voiceId=$("voice").value;
 
-  if(!script)throw new Error("Please paste your video script first.");
-  if(!voiceId)throw new Error("Please select an AI voice.");
+ if(!script)throw new Error("Please paste your script first.");
+ if(!voiceId)throw new Error("Please select an AI voice.");
 
-  if(!window.MediaRecorder || !canvas.captureStream){
-    throw new Error("This browser does not support video recording. Try Chrome.");
-  }
+ if(!window.MediaRecorder||!canvas.captureStream){
+  throw new Error("Use Chrome browser for video recording.");
+ }
 
-  if($("format").value==="portrait"){
-    canvas.width=720;
-    canvas.height=1280;
-  }else{
-    canvas.width=1280;
-    canvas.height=720;
-  }
+ canvas.width=$("format").value==="portrait"?720:1280;
+ canvas.height=$("format").value==="portrait"?1280:720;
 
-  $("download").disabled=true;
-  videoBlob=null;
+ $("download").disabled=true;
+ videoBlob=null;
 
-  await prepareScenes(script);
-  const speechBlob=await getSpeech(script,voiceId);
+ await prepareScenes(script);
 
-  status("Preparing voice and video...");
+ const speechBlob=await getSpeech(script,voiceId);
 
-  const AudioContextClass=window.AudioContext||window.webkitAudioContext;
-  if(!AudioContextClass)throw new Error("Audio recording is not supported.");
+ status("Preparing voice and video...");
 
-  const audioContext=new AudioContextClass();
-  await audioContext.resume();
+ const AudioContextClass=window.AudioContext||window.webkitAudioContext;
 
-  const audioBuffer=await audioContext.decodeAudioData(
-    await speechBlob.arrayBuffer()
+ if(!AudioContextClass)throw new Error("Audio recording is not supported.");
+
+ const audioContext=new AudioContextClass();
+ await audioContext.resume();
+
+ const audioBuffer=await audioContext.decodeAudioData(
+  await speechBlob.arrayBuffer()
+ );
+
+ const audioDestination=audioContext.createMediaStreamDestination();
+ const audioSource=audioContext.createBufferSource();
+
+ audioSource.buffer=audioBuffer;
+ audioSource.connect(audioDestination);
+
+ const canvasStream=canvas.captureStream(30);
+
+ const combinedStream=new MediaStream([
+  ...canvasStream.getVideoTracks(),
+  ...audioDestination.stream.getAudioTracks()
+ ]);
+
+ const mimeTypes=[
+  "video/mp4;codecs=avc1.42E01E,mp4a.40.2",
+  "video/mp4",
+  "video/webm;codecs=vp9,opus",
+  "video/webm;codecs=vp8,opus",
+  "video/webm"
+ ];
+
+ const mimeType=mimeTypes.find(type=>MediaRecorder.isTypeSupported(type));
+
+ if(!mimeType)throw new Error("Unsupported video format.");
+
+ const recorder=new MediaRecorder(combinedStream,{mimeType});
+ const chunks=[];
+
+ recorder.ondataavailable=event=>{
+  if(event.data&&event.data.size)chunks.push(event.data);
+ };
+
+ const stopped=new Promise((resolve,reject)=>{
+  recorder.onstop=resolve;
+  recorder.onerror=()=>reject(new Error("Video recording failed."));
+ });
+
+ const targetDuration=Number($("duration").value);
+ const totalDuration=Math.max(targetDuration,audioBuffer.duration);
+
+ recorder.start(1000);
+ audioSource.start();
+
+ status("Recording video with AI voice...");
+
+ const startTime=performance.now();
+
+ while(true){
+  const elapsed=(performance.now()-startTime)/1000;
+  const progress=Math.min(elapsed/totalDuration,.999);
+
+  const index=Math.min(
+   scenes.length-1,
+   Math.floor(progress*scenes.length)
   );
 
-  const audioDestination=audioContext.createMediaStreamDestination();
-  const audioSource=audioContext.createBufferSource();
+  drawScene(scenes[index],elapsed);
 
-  audioSource.buffer=audioBuffer;
-  audioSource.connect(audioDestination);
+  if(elapsed>=totalDuration)break;
 
-  const canvasStream=canvas.captureStream(30);
-  const combinedStream=new MediaStream([
-    ...canvasStream.getVideoTracks(),
-    ...audioDestination.stream.getAudioTracks()
-  ]);
+  await new Promise(resolve=>requestAnimationFrame(resolve));
+ }
 
-  const mimeTypes=[
-    "video/mp4;codecs=avc1.42E01E,mp4a.40.2",
-    "video/mp4",
-    "video/webm;codecs=vp9,opus",
-    "video/webm;codecs=vp8,opus",
-    "video/webm"
-  ];
+ recorder.stop();
+ await stopped;
 
-  const mimeType=mimeTypes.find(type=>
-    MediaRecorder.isTypeSupported(type)
-  );
+ combinedStream.getTracks().forEach(track=>track.stop());
+ await audioContext.close();
 
-  if(!mimeType)throw new Error("This browser cannot create a supported video.");
+ videoBlob=new Blob(chunks,{type:mimeType});
 
-  const recorder=new MediaRecorder(combinedStream,{mimeType});
-  const chunks=[];
+ if(!videoBlob.size)throw new Error("Video could not be created.");
 
-  recorder.ondataavailable=event=>{
-    if(event.data&&event.data.size)chunks.push(event.data);
-  };
+ const extension=mimeType.includes("mp4")?"mp4":"webm";
 
-  const stopped=new Promise((resolve,reject)=>{
-    recorder.onstop=resolve;
-    recorder.onerror=()=>reject(new Error("Video recording failed."));
-  });
+ if(downloadUrl)URL.revokeObjectURL(downloadUrl);
 
-  const targetDuration=Number($("duration").value);
-  const totalDuration=Math.max(targetDuration,audioBuffer.duration);
+ downloadUrl=URL.createObjectURL(videoBlob);
 
-  recorder.start(1000);
-  audioSource.start();
+ $("download").disabled=false;
 
-  status("Recording video with AI voice...");
+ $("download").onclick=()=>{
+  const link=document.createElement("a");
+  link.href=downloadUrl;
+  link.download="Jawad-AI-Video."+extension;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+ };
 
-  const startTime=performance.now();
-
-  while(true){
-    const elapsed=(performance.now()-startTime)/1000;
-    const progress=Math.min(elapsed/totalDuration,.999);
-
-    const index=Math.min(
-      scenes.length-1,
-      Math.floor(progress*scenes.length)
-    );
-
-    drawScene(scenes[index],elapsed);
-
-    if(elapsed>=totalDuration)break;
-
-    await new Promise(resolve=>requestAnimationFrame(resolve));
-  }
-
-  recorder.stop();
-  await stopped;
-
-  combinedStream.getTracks().forEach(track=>track.stop());
-  await audioContext.close();
-
-  videoBlob=new Blob(chunks,{type:mimeType});
-
-  if(!videoBlob.size)throw new Error("Video file could not be created.");
-
-  const extension=mimeType.includes("mp4")?"mp4":"webm";
-  const downloadUrl=URL.createObjectURL(videoBlob);
-
-  $("download").disabled=false;
-  $("download").onclick=()=>{
-    const link=document.createElement("a");
-    link.href=downloadUrl;
-    link.download="Jawad-AI-Video."+extension;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-  };
-
-  status(
-    "Video created successfully!\n"+
-    "Mode: "+$("mode").selectedOptions[0].textContent+"\n"+
-    "Format: "+extension.toUpperCase()+"\n"+
-    "AI voice included.\n"+
-    "Tap Download video."
-  );
+ status(
+  "Video created successfully!\n"+
+  "Mode: "+$("mode").selectedOptions[0].textContent+"\n"+
+  "Format: "+extension.toUpperCase()+"\n"+
+  "AI voice included.\n"+
+  "Tap Download video."
+ );
 }
 
 $("generate").addEventListener("click",async()=>{
-  const button=$("generate");
-  button.disabled=true;
+ const button=$("generate");
+ button.disabled=true;
 
-  try{
-    await createVideo();
-  }catch(error){
-    console.error(error);
-    status("Error: "+error.message);
-  }finally{
-    button.disabled=false;
-  }
+ try{
+  await createVideo();
+ }catch(error){
+  console.error(error);
+  status("Error: "+error.message);
+ }finally{
+  button.disabled=false;
+ }
 });
 
-loadVoices();
+updateMode();
 </script>
 </body>
 </html>
