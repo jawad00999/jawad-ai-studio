@@ -8,34 +8,22 @@
 
 <style>
 *{box-sizing:border-box}
-body{
-  margin:0;background:#10131d;color:#fff;
-  font-family:Arial,sans-serif;padding:16px
-}
+body{margin:0;background:#10131d;color:white;font-family:Arial;padding:16px}
 .container{max-width:850px;margin:auto}
 h1{text-align:center;color:#7dd3fc}
-.panel{
-  background:#1b2030;padding:16px;
-  border-radius:14px;margin:14px 0
-}
+.panel{background:#1b2030;padding:16px;border-radius:14px;margin:14px 0}
 label{display:block;margin:12px 0 6px;color:#cbd5e1}
-textarea,select,input,button{
-  width:100%;padding:12px;border-radius:9px;
-  border:1px solid #39445c;background:#111827;
-  color:white;font-size:15px
+textarea,select,button{
+width:100%;padding:12px;border-radius:9px;
+border:1px solid #39445c;background:#111827;
+color:white;font-size:15px
 }
 textarea{min-height:140px;resize:vertical}
-button{
-  background:#087eeb;border:0;font-weight:bold;
-  margin-top:12px;cursor:pointer
-}
+button{background:#087eeb;border:0;font-weight:bold;margin-top:12px;cursor:pointer}
 button:disabled{opacity:.5}
 .secondary{background:#374151}
 #status{color:#7dd3fc;white-space:pre-wrap;line-height:1.5}
-canvas{
-  width:100%;max-height:520px;background:#000;
-  border-radius:12px;margin-top:12px
-}
+canvas{width:100%;max-height:520px;background:#000;border-radius:12px;margin-top:12px}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 small{color:#aab4c8}
 </style>
@@ -100,7 +88,6 @@ small{color:#aab4c8}
 </div>
 
 <button id="generate">Generate images + AI voice video</button>
-
 <p id="status">Ready. Paste your script to begin.</p>
 
 </div>
@@ -113,11 +100,11 @@ small{color:#aab4c8}
 
 </div>
 
-<script>
+<script type="module">
+
 const API = "https://jawad-ai-api.jawadraja00999.workers.dev/";
 
 const $ = id => document.getElementById(id);
-
 const canvas = $("canvas");
 const ctx = canvas.getContext("2d");
 
@@ -130,7 +117,8 @@ function status(message){
   $("status").textContent = message;
 }
 
-// LOAD VOICES
+
+// VOICES
 
 async function loadVoices(){
 
@@ -144,17 +132,14 @@ async function loadVoices(){
     if(!response.ok) throw new Error("Voice API error: " + response.status);
 
     const data = await response.json();
-
     voices = data.voices || [];
 
     filterVoices();
-
     status("Voices loaded: " + voices.length);
 
   }catch(error){
 
     select.innerHTML = '<option value="">Could not load voices</option>';
-
     status("Voice loading error: " + error.message);
 
   }
@@ -186,18 +171,14 @@ function filterVoices(){
   filtered.forEach(v=>{
 
     const option = document.createElement("option");
-
     option.value = v.voice_id;
     option.textContent = v.name;
-
     select.appendChild(option);
 
   });
 
   if(!filtered.length){
-
     select.innerHTML = '<option value="">No matching voices</option>';
-
   }
 }
 
@@ -206,7 +187,7 @@ $("gender").addEventListener("change",filterVoices);
 $("refreshVoices").addEventListener("click",loadVoices);
 
 
-// SPLIT SCRIPT
+// SCRIPT SPLITTER
 
 function splitScript(text){
 
@@ -220,39 +201,32 @@ function splitScript(text){
     const grouped = [];
 
     for(let i=0;i<parts.length;i+=groupSize){
-
       grouped.push(parts.slice(i,i+groupSize).join(" "));
-
     }
 
     parts = grouped;
-
   }
 
   return parts;
 }
 
 
-// GET IMAGES
+// IMAGE API
 
 async function getImage(query){
 
-  const url = API + "?query=" + encodeURIComponent(query);
-
-  const response = await fetch(url);
+  const response = await fetch(
+    API + "?query=" + encodeURIComponent(query)
+  );
 
   if(!response.ok){
-
     throw new Error("Image API error: " + response.status);
-
   }
 
   const data = await response.json();
 
   if(!data.image){
-
     throw new Error("No image returned for: " + query);
-
   }
 
   return data;
@@ -263,17 +237,14 @@ function loadImage(url){
   return new Promise((resolve,reject)=>{
 
     const img = new Image();
-
     img.crossOrigin = "anonymous";
 
     img.onload = ()=>resolve(img);
-
     img.onerror = ()=>reject(new Error("Image could not load"));
 
     img.src = url;
 
   });
-
 }
 
 
@@ -282,13 +253,11 @@ function loadImage(url){
 async function prepareScenes(script){
 
   const sentences = splitScript(script);
-
   scenes = [];
 
   for(let i=0;i<sentences.length;i++){
 
     const sentence = sentences[i];
-
     const query = sentence.split(/\s+/).slice(0,8).join(" ");
 
     status("Finding image " + (i+1) + " of " + sentences.length + "...");
@@ -296,7 +265,6 @@ async function prepareScenes(script){
     try{
 
       const result = await getImage(query);
-
       const img = await loadImage(result.image);
 
       scenes.push({
@@ -316,19 +284,15 @@ async function prepareScenes(script){
       });
 
     }
-
   }
 
   if(!scenes.some(s=>s.image)){
-
-    throw new Error("No images could be loaded. Check image API.");
-
+    throw new Error("No images could be loaded.");
   }
-
 }
 
 
-// AI VOICE
+// AI SPEECH
 
 async function getSpeech(text,voiceId){
 
@@ -337,7 +301,6 @@ async function getSpeech(text,voiceId){
   const response = await fetch(API,{
 
     method:"POST",
-
     headers:{"Content-Type":"application/json"},
 
     body:JSON.stringify({
@@ -350,7 +313,6 @@ async function getSpeech(text,voiceId){
   if(!response.ok){
 
     const message = await response.text();
-
     throw new Error("Voice generation failed: " + message.slice(0,250));
 
   }
@@ -360,7 +322,6 @@ async function getSpeech(text,voiceId){
   if(type.includes("json")){
 
     const result = await response.json();
-
     throw new Error(result.error || "Worker returned JSON instead of audio.");
 
   }
@@ -368,17 +329,14 @@ async function getSpeech(text,voiceId){
   const blob = await response.blob();
 
   if(!blob.size){
-
     throw new Error("AI voice file is empty.");
-
   }
 
   return blob;
-
 }
 
 
-// DRAW VIDEO SCENE
+// DRAW SCENE
 
 function drawScene(scene){
 
@@ -393,20 +351,15 @@ function drawScene(scene){
     const img = scene.image;
 
     const scaleBg = Math.max(w/img.width,h/img.height);
-
     const bgW = img.width*scaleBg;
     const bgH = img.height*scaleBg;
 
     ctx.save();
-
     ctx.filter = "blur(28px) brightness(0.55)";
-
     ctx.drawImage(img,(w-bgW)/2,(h-bgH)/2,bgW,bgH);
-
     ctx.restore();
 
     const scale = Math.min(w/img.width,h/img.height);
-
     const drawW = img.width*scale;
     const drawH = img.height*scale;
 
@@ -417,18 +370,14 @@ function drawScene(scene){
   if(scene){
 
     const caption = scene.text;
+    const fontSize = w>h ? 34 : 42;
 
-    const fontSize = canvas.width>canvas.height ? 34 : 42;
-
-    ctx.font = "bold "+fontSize+"px Arial";
-
+    ctx.font = "bold " + fontSize + "px Arial";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
 
     const maxWidth = w*0.88;
-
     const words = caption.split(/\s+/);
-
     const lines = [];
 
     let line = "";
@@ -438,32 +387,23 @@ function drawScene(scene){
       const test = line ? line+" "+word : word;
 
       if(ctx.measureText(test).width>maxWidth && line){
-
         lines.push(line);
-
         line = word;
-
       }else{
-
         line = test;
-
       }
-
     }
 
     if(line) lines.push(line);
 
     const lineHeight = fontSize*1.3;
-
     const boxHeight = lines.length*lineHeight+42;
-
     const boxY = h-boxHeight-h*0.07;
 
     ctx.fillStyle = "rgba(0,0,0,.68)";
-
     ctx.fillRect(w*0.04,boxY,w*0.92,boxHeight);
 
-    ctx.fillStyle = "#ffffff";
+    ctx.fillStyle = "#fff";
 
     lines.forEach((line,index)=>{
 
@@ -475,13 +415,11 @@ function drawScene(scene){
       );
 
     });
-
   }
-
 }
 
 
-// WEBM TO REAL MP4 CONVERSION
+// LOAD FFMPEG
 
 async function convertToMP4(webmBlob){
 
@@ -497,55 +435,65 @@ async function convertToMP4(webmBlob){
 
   const ffmpeg = new FFmpeg();
 
-  const baseURL =
+  const coreBase =
     "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd";
+
+  const packageBase =
+    "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm";
 
   try{
 
-    status("Preparing MP4 converter...");
+    status("Preparing converter worker...");
+
+    // Convert the FFmpeg class worker into a same-origin Blob URL.
+    // This avoids loading the worker directly from another origin.
+
+    const classWorkerURL = await toBlobURL(
+      packageBase + "/worker.js",
+      "text/javascript"
+    );
+
+    const coreURL = await toBlobURL(
+      coreBase + "/ffmpeg-core.js",
+      "text/javascript"
+    );
+
+    const wasmURL = await toBlobURL(
+      coreBase + "/ffmpeg-core.wasm",
+      "application/wasm"
+    );
 
     await ffmpeg.load({
-
-      coreURL:await toBlobURL(
-        baseURL+"/ffmpeg-core.js",
-        "text/javascript"
-      ),
-
-      wasmURL:await toBlobURL(
-        baseURL+"/ffmpeg-core.wasm",
-        "application/wasm"
-      )
-
+      classWorkerURL,
+      coreURL,
+      wasmURL
     });
 
-    status("Reading video for conversion...");
+    status("Reading video...");
 
     await ffmpeg.writeFile(
       "input.webm",
       new Uint8Array(await webmBlob.arrayBuffer())
     );
 
-    status("Converting WEBM to MP4. Please wait...");
+    status("Converting video to MP4. Please wait...");
 
-    await ffmpeg.exec([
+    const result = await ffmpeg.exec([
 
       "-i","input.webm",
-
       "-c:v","libx264",
-
       "-preset","ultrafast",
-
       "-pix_fmt","yuv420p",
-
       "-c:a","aac",
-
       "-b:a","128k",
-
       "-movflags","+faststart",
-
       "output.mp4"
 
     ]);
+
+    if(result !== 0){
+      throw new Error("FFmpeg conversion failed.");
+    }
 
     const data = await ffmpeg.readFile("output.mp4");
 
@@ -555,10 +503,11 @@ async function convertToMP4(webmBlob){
     );
 
     if(!mp4Blob.size){
-
-      throw new Error("MP4 conversion produced an empty file.");
-
+      throw new Error("MP4 file is empty.");
     }
+
+    await ffmpeg.deleteFile("input.webm");
+    await ffmpeg.deleteFile("output.mp4");
 
     return mp4Blob;
 
@@ -567,7 +516,6 @@ async function convertToMP4(webmBlob){
     ffmpeg.terminate();
 
   }
-
 }
 
 
@@ -576,74 +524,60 @@ async function convertToMP4(webmBlob){
 async function createVideo(){
 
   const script = $("script").value.trim();
-
   const voiceId = $("voice").value;
 
   if(!script){
-
     throw new Error("Please paste your video script first.");
-
   }
 
   if(!voiceId){
-
     throw new Error("Please select an AI voice.");
-
   }
 
   if(!window.MediaRecorder || !canvas.captureStream){
-
     throw new Error("Video recording is not supported. Try Chrome.");
-
   }
 
   if($("format").value==="portrait"){
-
     canvas.width=720;
     canvas.height=1280;
-
   }else{
-
     canvas.width=1280;
     canvas.height=720;
-
   }
 
   $("download").disabled=true;
-
   videoBlob=null;
 
   await prepareScenes(script);
 
-  const speechBlob=await getSpeech(script,voiceId);
+  const speechBlob = await getSpeech(script,voiceId);
 
-  status("Preparing voice and video...");
+  status("Preparing audio...");
 
   const AudioContextClass =
     window.AudioContext || window.webkitAudioContext;
 
   if(!AudioContextClass){
-
     throw new Error("Audio recording is not supported.");
-
   }
 
-  const audioContext=new AudioContextClass();
+  const audioContext = new AudioContextClass();
 
   try{
 
     await audioContext.resume();
 
-    const audioBuffer=await audioContext.decodeAudioData(
+    const audioBuffer = await audioContext.decodeAudioData(
       await speechBlob.arrayBuffer()
     );
 
-    const audioDestination=audioContext.createMediaStreamDestination();
+    const audioDestination =
+      audioContext.createMediaStreamDestination();
 
-    const audioSource=audioContext.createBufferSource();
+    const audioSource = audioContext.createBufferSource();
 
     audioSource.buffer=audioBuffer;
-
     audioSource.connect(audioDestination);
 
     const canvasStream=canvas.captureStream(30);
@@ -651,32 +585,33 @@ async function createVideo(){
     const combinedStream=new MediaStream([
 
       ...canvasStream.getVideoTracks(),
-
       ...audioDestination.stream.getAudioTracks()
 
     ]);
 
-    const mimeTypes=[
+    // Prefer MP4 when the browser supports it.
 
+    const mimeTypes = [
+
+      "video/mp4;codecs=avc1.42E01E,mp4a.40.2",
+      "video/mp4",
       "video/webm;codecs=vp9,opus",
-
       "video/webm;codecs=vp8,opus",
-
       "video/webm"
 
     ];
 
-    const mimeType=mimeTypes.find(
+    const mimeType = mimeTypes.find(
       type=>MediaRecorder.isTypeSupported(type)
     );
 
     if(!mimeType){
-
-      throw new Error("Browser cannot create a video recording.");
-
+      throw new Error("No supported video format found.");
     }
 
-    const recorder=new MediaRecorder(
+    const isMP4 = mimeType.startsWith("video/mp4");
+
+    const recorder = new MediaRecorder(
       combinedStream,
       {mimeType}
     );
@@ -686,14 +621,12 @@ async function createVideo(){
     recorder.ondataavailable=event=>{
 
       if(event.data && event.data.size){
-
         chunks.push(event.data);
-
       }
 
     };
 
-    const stopped=new Promise((resolve,reject)=>{
+    const stopped = new Promise((resolve,reject)=>{
 
       recorder.onstop=resolve;
 
@@ -711,7 +644,6 @@ async function createVideo(){
     );
 
     recorder.start(1000);
-
     audioSource.start();
 
     status("Recording video with AI voice...");
@@ -743,22 +675,26 @@ async function createVideo(){
 
     combinedStream.getTracks().forEach(track=>track.stop());
 
-    const webmBlob=new Blob(chunks,{type:mimeType});
+    const recordedBlob=new Blob(chunks,{type:mimeType});
 
-    if(!webmBlob.size){
-
+    if(!recordedBlob.size){
       throw new Error("Video recording is empty.");
+    }
+
+    if(isMP4){
+
+      status("MP4 recording completed...");
+
+      videoBlob=recordedBlob;
+
+    }else{
+
+      videoBlob=await convertToMP4(recordedBlob);
 
     }
 
-    // CONVERT TO MP4
-
-    videoBlob=await convertToMP4(webmBlob);
-
     if(downloadUrl){
-
       URL.revokeObjectURL(downloadUrl);
-
     }
 
     downloadUrl=URL.createObjectURL(videoBlob);
@@ -770,20 +706,15 @@ async function createVideo(){
       const link=document.createElement("a");
 
       link.href=downloadUrl;
-
       link.download="Jawad-AI-Video.mp4";
 
       document.body.appendChild(link);
-
       link.click();
-
       link.remove();
 
     };
 
-    status(
-      "Done! Your MP4 video is ready. Tap Download MP4 Video."
-    );
+    status("Success! MP4 video is ready. Tap Download MP4 Video.");
 
   }finally{
 
