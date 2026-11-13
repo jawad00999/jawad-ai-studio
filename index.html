@@ -5,19 +5,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Jawad AI Studio Pro</title>
-
 <style>
 *{box-sizing:border-box}
-body{margin:0;background:#10131d;color:white;font-family:Arial;padding:16px}
+body{margin:0;background:#10131d;color:#fff;font-family:Arial,sans-serif;padding:16px}
 .container{max-width:850px;margin:auto}
 h1{text-align:center;color:#7dd3fc}
 .panel{background:#1b2030;padding:16px;border-radius:14px;margin:14px 0}
 label{display:block;margin:12px 0 6px;color:#cbd5e1}
-textarea,select,button{
-width:100%;padding:12px;border-radius:9px;
-border:1px solid #39445c;background:#111827;
-color:white;font-size:15px
-}
+textarea,select,input,button{width:100%;padding:12px;border-radius:9px;border:1px solid #39445c;background:#111827;color:white;font-size:15px}
 textarea{min-height:140px;resize:vertical}
 button{background:#087eeb;border:0;font-weight:bold;margin-top:12px;cursor:pointer}
 button:disabled{opacity:.5}
@@ -25,17 +20,15 @@ button:disabled{opacity:.5}
 #status{color:#7dd3fc;white-space:pre-wrap;line-height:1.5}
 canvas{width:100%;max-height:520px;background:#000;border-radius:12px;margin-top:12px}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+a{color:#7dd3fc}
 small{color:#aab4c8}
 </style>
 </head>
-
 <body>
 <div class="container">
-
 <h1>🎬 Jawad AI Studio Pro</h1>
 
 <div class="panel">
-
 <label>Your video script</label>
 <textarea id="script" placeholder="Paste your complete video script here..."></textarea>
 
@@ -47,7 +40,6 @@ small{color:#aab4c8}
 <option value="hi">Hindi</option>
 </select>
 </div>
-
 <div>
 <label>Voice gender</label>
 <select id="gender">
@@ -62,7 +54,6 @@ small{color:#aab4c8}
 <select id="voice">
 <option value="">Loading voices...</option>
 </select>
-
 <button class="secondary" id="refreshVoices">Refresh voices</button>
 
 <div class="row">
@@ -73,7 +64,6 @@ small{color:#aab4c8}
 <option value="landscape">Landscape (16:9)</option>
 </select>
 </div>
-
 <div>
 <label>Video duration</label>
 <select id="duration">
@@ -89,19 +79,16 @@ small{color:#aab4c8}
 
 <button id="generate">Generate images + AI voice video</button>
 <p id="status">Ready. Paste your script to begin.</p>
-
 </div>
 
 <div class="panel">
 <h3>Video Preview</h3>
 <canvas id="canvas" width="720" height="1280"></canvas>
-<button id="download" disabled>Download MP4 Video</button>
+<button id="download" disabled>Download video</button>
+</div>
 </div>
 
-</div>
-
-<script type="module">
-
+<script>
 const API = "https://jawad-ai-api.jawadraja00999.workers.dev/";
 
 const $ = id => document.getElementById(id);
@@ -111,48 +98,36 @@ const ctx = canvas.getContext("2d");
 let voices = [];
 let scenes = [];
 let videoBlob = null;
-let downloadUrl = null;
 
 function status(message){
   $("status").textContent = message;
 }
 
-
-// VOICES
-
 async function loadVoices(){
-
   const select = $("voice");
   select.innerHTML = '<option value="">Loading voices...</option>';
 
   try{
-
     const response = await fetch(API + "?action=voices");
-
     if(!response.ok) throw new Error("Voice API error: " + response.status);
 
     const data = await response.json();
     voices = data.voices || [];
-
     filterVoices();
+
     status("Voices loaded: " + voices.length);
-
   }catch(error){
-
     select.innerHTML = '<option value="">Could not load voices</option>';
     status("Voice loading error: " + error.message);
-
   }
 }
 
 function filterVoices(){
-
   const language = $("language").value;
   const gender = $("gender").value;
   const select = $("voice");
 
-  const filtered = voices.filter(v=>{
-
+  const filtered = voices.filter(v => {
     const lang = (v.labels?.language || "").toLowerCase();
     const voiceGender = v.labels?.gender || "";
 
@@ -161,20 +136,16 @@ function filterVoices(){
       : lang.startsWith("en");
 
     const genderMatch = gender === "all" || voiceGender === gender;
-
     return languageMatch && genderMatch;
-
   });
 
   select.innerHTML = "";
 
-  filtered.forEach(v=>{
-
+  filtered.forEach(v => {
     const option = document.createElement("option");
     option.value = v.voice_id;
     option.textContent = v.name;
     select.appendChild(option);
-
   });
 
   if(!filtered.length){
@@ -182,22 +153,16 @@ function filterVoices(){
   }
 }
 
-$("language").addEventListener("change",filterVoices);
-$("gender").addEventListener("change",filterVoices);
-$("refreshVoices").addEventListener("click",loadVoices);
-
-
-// SCRIPT SPLITTER
+$("language").addEventListener("change", filterVoices);
+$("gender").addEventListener("change", filterVoices);
+$("refreshVoices").addEventListener("click", loadVoices);
 
 function splitScript(text){
-
   let parts = text.match(/[^.!?।]+[.!?।]?/g) || [text];
+  parts = parts.map(x => x.trim()).filter(x => x.length > 2);
 
-  parts = parts.map(x=>x.trim()).filter(x=>x.length>2);
-
-  if(parts.length>30){
-
-    const groupSize = Math.ceil(parts.length/30);
+  if(parts.length > 30){
+    const groupSize = Math.ceil(parts.length / 30);
     const grouped = [];
 
     for(let i=0;i<parts.length;i+=groupSize){
@@ -210,14 +175,9 @@ function splitScript(text){
   return parts;
 }
 
-
-// IMAGE API
-
 async function getImage(query){
-
-  const response = await fetch(
-    API + "?query=" + encodeURIComponent(query)
-  );
+  const url = API + "?query=" + encodeURIComponent(query);
+  const response = await fetch(url);
 
   if(!response.ok){
     throw new Error("Image API error: " + response.status);
@@ -233,113 +193,83 @@ async function getImage(query){
 }
 
 function loadImage(url){
-
   return new Promise((resolve,reject)=>{
-
     const img = new Image();
     img.crossOrigin = "anonymous";
-
-    img.onload = ()=>resolve(img);
-    img.onerror = ()=>reject(new Error("Image could not load"));
-
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("Image could not load"));
     img.src = url;
-
   });
 }
 
-
-// PREPARE SCENES
-
 async function prepareScenes(script){
-
   const sentences = splitScript(script);
   scenes = [];
 
   for(let i=0;i<sentences.length;i++){
-
     const sentence = sentences[i];
     const query = sentence.split(/\s+/).slice(0,8).join(" ");
 
     status("Finding image " + (i+1) + " of " + sentences.length + "...");
 
     try{
-
       const result = await getImage(query);
       const img = await loadImage(result.image);
 
       scenes.push({
-        text:sentence,
-        image:img,
-        description:result.description || ""
+        text: sentence,
+        image: img,
+        description: result.description || ""
       });
-
     }catch(error){
-
       console.warn(error);
-
       scenes.push({
-        text:sentence,
-        image:null,
-        description:"Image unavailable"
+        text: sentence,
+        image: null,
+        description: "Image unavailable"
       });
-
     }
   }
 
-  if(!scenes.some(s=>s.image)){
-    throw new Error("No images could be loaded.");
+  if(!scenes.some(s => s.image)){
+    throw new Error("No images could be loaded. Check the image API.");
   }
 }
 
-
-// AI SPEECH
-
-async function getSpeech(text,voiceId){
-
+async function getSpeech(text, voiceId){
   status("Creating AI voice...");
 
   const response = await fetch(API,{
-
     method:"POST",
     headers:{"Content-Type":"application/json"},
-
     body:JSON.stringify({
       text:text,
       voiceId:voiceId
     })
-
   });
 
   if(!response.ok){
-
     const message = await response.text();
     throw new Error("Voice generation failed: " + message.slice(0,250));
-
   }
 
   const type = response.headers.get("content-type") || "";
 
   if(type.includes("json")){
-
     const result = await response.json();
     throw new Error(result.error || "Worker returned JSON instead of audio.");
-
   }
 
   const blob = await response.blob();
 
   if(!blob.size){
-    throw new Error("AI voice file is empty.");
+    throw new Error("The AI voice file is empty.");
   }
 
   return blob;
 }
 
-
-// DRAW SCENE
-
 function drawScene(scene){
-
   const w = canvas.width;
   const h = canvas.height;
 
@@ -347,7 +277,6 @@ function drawScene(scene){
   ctx.fillRect(0,0,w,h);
 
   if(scene && scene.image){
-
     const img = scene.image;
 
     const scaleBg = Math.max(w/img.width,h/img.height);
@@ -364,13 +293,11 @@ function drawScene(scene){
     const drawH = img.height*scale;
 
     ctx.drawImage(img,(w-drawW)/2,(h-drawH)/2,drawW,drawH);
-
   }
 
   if(scene){
-
     const caption = scene.text;
-    const fontSize = w>h ? 34 : 42;
+    const fontSize = canvas.width > canvas.height ? 34 : 42;
 
     ctx.font = "bold " + fontSize + "px Arial";
     ctx.textAlign = "center";
@@ -379,14 +306,12 @@ function drawScene(scene){
     const maxWidth = w*0.88;
     const words = caption.split(/\s+/);
     const lines = [];
-
     let line = "";
 
     for(const word of words){
-
       const test = line ? line+" "+word : word;
 
-      if(ctx.measureText(test).width>maxWidth && line){
+      if(ctx.measureText(test).width > maxWidth && line){
         lines.push(line);
         line = word;
       }else{
@@ -397,132 +322,26 @@ function drawScene(scene){
     if(line) lines.push(line);
 
     const lineHeight = fontSize*1.3;
-    const boxHeight = lines.length*lineHeight+42;
-    const boxY = h-boxHeight-h*0.07;
+    const boxHeight = lines.length*lineHeight + 42;
+    const boxY = h - boxHeight - h*0.07;
 
     ctx.fillStyle = "rgba(0,0,0,.68)";
     ctx.fillRect(w*0.04,boxY,w*0.92,boxHeight);
 
-    ctx.fillStyle = "#fff";
+    ctx.fillStyle = "#ffffff";
 
     lines.forEach((line,index)=>{
-
       ctx.fillText(
         line,
         w/2,
-        boxY+24+lineHeight*(index+0.5),
+        boxY + 24 + lineHeight*(index+0.5),
         maxWidth
       );
-
     });
   }
 }
-
-
-// LOAD FFMPEG
-
-async function convertToMP4(webmBlob){
-
-  status("Loading MP4 converter...");
-
-  const { FFmpeg } = await import(
-    "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm/index.js"
-  );
-
-  const { toBlobURL } = await import(
-    "https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.2/dist/esm/index.js"
-  );
-
-  const ffmpeg = new FFmpeg();
-
-  const coreBase =
-    "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd";
-
-  const packageBase =
-    "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm";
-
-  try{
-
-    status("Preparing converter worker...");
-
-    // Convert the FFmpeg class worker into a same-origin Blob URL.
-    // This avoids loading the worker directly from another origin.
-
-    const classWorkerURL = await toBlobURL(
-      packageBase + "/worker.js",
-      "text/javascript"
-    );
-
-    const coreURL = await toBlobURL(
-      coreBase + "/ffmpeg-core.js",
-      "text/javascript"
-    );
-
-    const wasmURL = await toBlobURL(
-      coreBase + "/ffmpeg-core.wasm",
-      "application/wasm"
-    );
-
-    await ffmpeg.load({
-      classWorkerURL,
-      coreURL,
-      wasmURL
-    });
-
-    status("Reading video...");
-
-    await ffmpeg.writeFile(
-      "input.webm",
-      new Uint8Array(await webmBlob.arrayBuffer())
-    );
-
-    status("Converting video to MP4. Please wait...");
-
-    const result = await ffmpeg.exec([
-
-      "-i","input.webm",
-      "-c:v","libx264",
-      "-preset","ultrafast",
-      "-pix_fmt","yuv420p",
-      "-c:a","aac",
-      "-b:a","128k",
-      "-movflags","+faststart",
-      "output.mp4"
-
-    ]);
-
-    if(result !== 0){
-      throw new Error("FFmpeg conversion failed.");
-    }
-
-    const data = await ffmpeg.readFile("output.mp4");
-
-    const mp4Blob = new Blob(
-      [data],
-      {type:"video/mp4"}
-    );
-
-    if(!mp4Blob.size){
-      throw new Error("MP4 file is empty.");
-    }
-
-    await ffmpeg.deleteFile("input.webm");
-    await ffmpeg.deleteFile("output.mp4");
-
-    return mp4Blob;
-
-  }finally{
-
-    ffmpeg.terminate();
-
-  }
-}
-
-
-// CREATE VIDEO
 
 async function createVideo(){
-
   const script = $("script").value.trim();
   const voiceId = $("voice").value;
 
@@ -535,226 +354,159 @@ async function createVideo(){
   }
 
   if(!window.MediaRecorder || !canvas.captureStream){
-    throw new Error("Video recording is not supported. Try Chrome.");
+    throw new Error("This browser does not support video recording. Try Chrome.");
   }
 
-  if($("format").value==="portrait"){
-    canvas.width=720;
-    canvas.height=1280;
+  if($("format").value === "portrait"){
+    canvas.width = 720;
+    canvas.height = 1280;
   }else{
-    canvas.width=1280;
-    canvas.height=720;
+    canvas.width = 1280;
+    canvas.height = 720;
   }
 
-  $("download").disabled=true;
-  videoBlob=null;
+  $("download").disabled = true;
+  videoBlob = null;
 
   await prepareScenes(script);
 
   const speechBlob = await getSpeech(script,voiceId);
 
-  status("Preparing audio...");
+  status("Preparing voice and video...");
 
-  const AudioContextClass =
-    window.AudioContext || window.webkitAudioContext;
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
 
   if(!AudioContextClass){
-    throw new Error("Audio recording is not supported.");
+    throw new Error("Audio recording is not supported in this browser.");
   }
 
   const audioContext = new AudioContextClass();
+  await audioContext.resume();
 
-  try{
+  const audioBuffer = await audioContext.decodeAudioData(
+    await speechBlob.arrayBuffer()
+  );
 
-    await audioContext.resume();
+  const audioDestination = audioContext.createMediaStreamDestination();
+  const audioSource = audioContext.createBufferSource();
 
-    const audioBuffer = await audioContext.decodeAudioData(
-      await speechBlob.arrayBuffer()
-    );
+  audioSource.buffer = audioBuffer;
+  audioSource.connect(audioDestination);
 
-    const audioDestination =
-      audioContext.createMediaStreamDestination();
+  const canvasStream = canvas.captureStream(30);
 
-    const audioSource = audioContext.createBufferSource();
+  const combinedStream = new MediaStream([
+    ...canvasStream.getVideoTracks(),
+    ...audioDestination.stream.getAudioTracks()
+  ]);
 
-    audioSource.buffer=audioBuffer;
-    audioSource.connect(audioDestination);
+  // Prefer MP4 when supported, otherwise use WebM.
+  const mimeTypes = [
+    "video/mp4;codecs=avc1.42E01E,mp4a.40.2",
+    "video/mp4",
+    "video/webm;codecs=vp9,opus",
+    "video/webm;codecs=vp8,opus",
+    "video/webm"
+  ];
 
-    const canvasStream=canvas.captureStream(30);
+  const mimeType = mimeTypes.find(type =>
+    MediaRecorder.isTypeSupported(type)
+  );
 
-    const combinedStream=new MediaStream([
-
-      ...canvasStream.getVideoTracks(),
-      ...audioDestination.stream.getAudioTracks()
-
-    ]);
-
-    // Prefer MP4 when the browser supports it.
-
-    const mimeTypes = [
-
-      "video/mp4;codecs=avc1.42E01E,mp4a.40.2",
-      "video/mp4",
-      "video/webm;codecs=vp9,opus",
-      "video/webm;codecs=vp8,opus",
-      "video/webm"
-
-    ];
-
-    const mimeType = mimeTypes.find(
-      type=>MediaRecorder.isTypeSupported(type)
-    );
-
-    if(!mimeType){
-      throw new Error("No supported video format found.");
-    }
-
-    const isMP4 = mimeType.startsWith("video/mp4");
-
-    const recorder = new MediaRecorder(
-      combinedStream,
-      {mimeType}
-    );
-
-    const chunks=[];
-
-    recorder.ondataavailable=event=>{
-
-      if(event.data && event.data.size){
-        chunks.push(event.data);
-      }
-
-    };
-
-    const stopped = new Promise((resolve,reject)=>{
-
-      recorder.onstop=resolve;
-
-      recorder.onerror=()=>reject(
-        new Error("Video recording failed.")
-      );
-
-    });
-
-    const targetDuration=Number($("duration").value);
-
-    const totalDuration=Math.max(
-      targetDuration,
-      audioBuffer.duration
-    );
-
-    recorder.start(1000);
-    audioSource.start();
-
-    status("Recording video with AI voice...");
-
-    const startTime=performance.now();
-
-    while(true){
-
-      const elapsed=(performance.now()-startTime)/1000;
-
-      const progress=Math.min(elapsed/totalDuration,0.999);
-
-      const index=Math.min(
-        scenes.length-1,
-        Math.floor(progress*scenes.length)
-      );
-
-      drawScene(scenes[index]);
-
-      if(elapsed>=totalDuration) break;
-
-      await new Promise(resolve=>requestAnimationFrame(resolve));
-
-    }
-
-    recorder.stop();
-
-    await stopped;
-
-    combinedStream.getTracks().forEach(track=>track.stop());
-
-    const recordedBlob=new Blob(chunks,{type:mimeType});
-
-    if(!recordedBlob.size){
-      throw new Error("Video recording is empty.");
-    }
-
-    if(isMP4){
-
-      status("MP4 recording completed...");
-
-      videoBlob=recordedBlob;
-
-    }else{
-
-      videoBlob=await convertToMP4(recordedBlob);
-
-    }
-
-    if(downloadUrl){
-      URL.revokeObjectURL(downloadUrl);
-    }
-
-    downloadUrl=URL.createObjectURL(videoBlob);
-
-    $("download").disabled=false;
-
-    $("download").onclick=()=>{
-
-      const link=document.createElement("a");
-
-      link.href=downloadUrl;
-      link.download="Jawad-AI-Video.mp4";
-
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-
-    };
-
-    status("Success! MP4 video is ready. Tap Download MP4 Video.");
-
-  }finally{
-
-    await audioContext.close();
-
+  if(!mimeType){
+    throw new Error("This browser cannot create a supported video file.");
   }
 
+  const recorder = new MediaRecorder(combinedStream,{mimeType});
+  const chunks = [];
+
+  recorder.ondataavailable = event => {
+    if(event.data && event.data.size){
+      chunks.push(event.data);
+    }
+  };
+
+  const stopped = new Promise((resolve,reject)=>{
+    recorder.onstop = resolve;
+    recorder.onerror = () => reject(new Error("Video recording failed."));
+  });
+
+  const targetDuration = Number($("duration").value);
+  const totalDuration = Math.max(targetDuration,audioBuffer.duration);
+
+  recorder.start(1000);
+  audioSource.start();
+
+  status("Recording video with AI voice...");
+
+  const startTime = performance.now();
+
+  while(true){
+    const elapsed = (performance.now()-startTime)/1000;
+    const progress = Math.min(elapsed/totalDuration,0.999);
+
+    const index = Math.min(
+      scenes.length-1,
+      Math.floor(progress*scenes.length)
+    );
+
+    drawScene(scenes[index]);
+
+    if(elapsed >= totalDuration) break;
+
+    await new Promise(resolve => requestAnimationFrame(resolve));
+  }
+
+  recorder.stop();
+  await stopped;
+
+  combinedStream.getTracks().forEach(track=>track.stop());
+  await audioContext.close();
+
+  videoBlob = new Blob(chunks,{type:mimeType});
+
+  if(!videoBlob.size){
+    throw new Error("Video file could not be created.");
+  }
+
+  const extension = mimeType.includes("mp4") ? "mp4" : "webm";
+  const downloadUrl = URL.createObjectURL(videoBlob);
+
+  $("download").disabled = false;
+
+  $("download").onclick = () => {
+    const link = document.createElement("a");
+    link.href = downloadUrl;
+    link.download = "Jawad-AI-Video." + extension;
+
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  };
+
+  status(
+    "Video created successfully!\n" +
+    "Format: " + extension.toUpperCase() + "\n" +
+    "AI voice included.\n" +
+    "Tap Download video."
+  );
 }
 
-
-// GENERATE BUTTON
-
 $("generate").addEventListener("click",async()=>{
-
-  const button=$("generate");
-
-  button.disabled=true;
+  const button = $("generate");
+  button.disabled = true;
 
   try{
-
     await createVideo();
-
   }catch(error){
-
     console.error(error);
-
-    status("Error: "+error.message);
-
-    $("download").disabled=true;
-
+    status("Error: " + error.message);
   }finally{
-
-    button.disabled=false;
-
+    button.disabled = false;
   }
-
 });
 
 loadVoices();
-
 </script>
 </body>
 </html>
