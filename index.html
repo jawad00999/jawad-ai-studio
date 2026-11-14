@@ -17,10 +17,16 @@ input,textarea,select{width:100%;padding:13px;border-radius:9px;border:1px solid
 textarea{min-height:110px}
 button{width:100%;padding:15px;margin-top:16px;border:0;border-radius:9px;background:#2563eb;color:white;font-size:16px;font-weight:bold}
 button:disabled{opacity:.5}
-#status{text-align:center;color:#93c5fd;white-space:pre-wrap;line-height:1.5}
+#status,#voiceStatus{text-align:center;color:#93c5fd;white-space:pre-wrap;line-height:1.5}
 video{width:100%;max-height:500px;background:#000;border-radius:12px}
-#download{display:none;color:#86efac;text-align:center;display:none;margin-top:15px}
+audio{width:100%;margin-top:12px}
+#download{color:#86efac;text-align:center;margin-top:15px}
 .note{font-size:12px;color:#aab4c8;line-height:1.5}
+#captions{
+ background:#080d18;border-radius:10px;padding:22px 12px;
+ text-align:center;font-size:23px;font-weight:bold;
+ min-height:85px;margin-top:15px;color:#fff;
+}
 </style>
 </head>
 <body>
@@ -46,10 +52,27 @@ video{width:100%;max-height:500px;background:#000;border-radius:12px}
 </div>
 
 <div class="panel">
+<h3>George AI Voice</h3>
+<label>English Narration Script</label>
+<textarea id="script" placeholder="Write your English narration here..."></textarea>
+
+<label>Selected Voice</label>
+<select id="voice">
+<option value="JBFqnCBsd6RMkjVDRZzb">George - Warm Storyteller</option>
+</select>
+
+<button id="generateVoice">Generate George Voice</button>
+<audio id="audioPreview" controls></audio>
+<div id="captions">Your synchronized captions will appear here.</div>
+<p id="voiceStatus">Voice ready.</p>
+<p class="note">Voice generation uses your ElevenLabs account. Captions are shown during audio playback.</p>
+</div>
+
+<div class="panel">
 <h3>Video Preview</h3>
 <video id="preview" controls playsinline></video>
 <p id="status">Ready to generate.</p>
-<a id="download" download="motionmind-video.mp4">Download Video</a>
+<a id="download" download="motionmind-video.mp4" style="display:none">Download Video</a>
 </div>
 </div>
 
@@ -59,6 +82,14 @@ const button=document.getElementById("generate");
 const statusBox=document.getElementById("status");
 const preview=document.getElementById("preview");
 const download=document.getElementById("download");
+
+const voiceButton=document.getElementById("generateVoice");
+const voiceStatus=document.getElementById("voiceStatus");
+const audio=document.getElementById("audioPreview");
+const captions=document.getElementById("captions");
+
+let captionWords=[];
+let audioObjectUrl=null;
 
 function status(message){
   statusBox.textContent=message;
@@ -77,7 +108,6 @@ function getVideoUrl(data){
 async function checkStatus(id){
   for(let i=0;i<90;i++){
     await new Promise(resolve=>setTimeout(resolve,4000));
-
     status("Rendering your video... Please wait.");
 
     const response=await fetch(
@@ -104,10 +134,10 @@ async function checkStatus(id){
   throw new Error("Generation is taking longer than expected. Check again later.");
 }
 
+// MAGIC HOUR VIDEO GENERATION
 button.addEventListener("click",async()=>{
   const topic=document.getElementById("topic").value.trim();
   const prompt=document.getElementById("prompt").value.trim();
-  const ratio=document.getElementById("ratio").value;
 
   if(!topic||!prompt){
     status("Please enter a topic and scene description.");
@@ -156,6 +186,106 @@ button.addEventListener("click",async()=>{
     status("Error: "+error.message);
   }finally{
     button.disabled=false;
+  }
+});
+
+// ELEVENLABS GEORGE VOICE
+voiceButton.addEventListener("click",async()=>{
+  const text=document.getElementById("script").value.trim();
+  const voiceId=document.getElementById("voice").value;
+
+  if(!text){
+    voiceStatus.textContent="Please enter your narration script.";
+    return;
+  }
+
+  if(text.length>1500){
+    voiceStatus.textContent="Please keep the script under 1500 characters.";
+    return;
+  }
+
+  voiceButton.disabled=true;
+  captions.textContent="Generating voice...";
+  voiceStatus.textContent="Connecting to ElevenLabs...";
+
+  try{
+    const response=await fetch(API+"tts",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        text:text,
+        voiceId:voiceId
+      })
+    });
+
+    const data=await response.json();
+
+    if(!response.ok){
+      throw new Error(data.error||data.message||"Voice generation failed.");
+    }
+
+    if(!data.audio_base64){
+      throw new Error("Audio data was not returned by the server.");
+    }
+
+    const binary=atob(data.audio_base64);
+    const bytes=new Uint8Array(binary.length);
+
+    for(let i=0;i<binary.length;i++){
+      bytes[i]=binary.charCodeAt(i);
+    }
+
+    const audioBlob=new Blob([bytes],{type:"audio/mpeg"});
+
+    if(audioObjectUrl){
+      URL.revokeObjectURL(audioObjectUrl);
+    }
+
+    audioObjectUrl=URL.createObjectURL(audioBlob);
+    audio.src=audioObjectUrl;
+
+    captionWords=Array.isArray(data.words)?data.words:[];
+    captions.textContent=captionWords.length
+      ?"Press play to see synchronized captions."
+      :"Voice ready. Word timing data was not returned.";
+
+    voiceStatus.textContent="George voice generated successfully!";
+    audio.load();
+
+  }catch(error){
+    captions.textContent="Captions will appear here.";
+    voiceStatus.textContent="Error: "+error.message;
+  }finally{
+    voiceButton.disabled=false;
+  }
+});
+
+// SYNCHRONIZED CAPTIONS
+audio.addEventListener("timeupdate",()=>{
+  if(!captionWords.length)return;
+
+  const currentTime=audio.currentTime;
+
+  const index=captionWords.findIndex(word=>{
+    const start=Number(word.start);
+    const end=Number(word.end);
+    return currentTime>=start && currentTime<=end;
+  });
+
+  if(index>=0){
+    const first=Math.max(0,index-2);
+    const last=Math.min(captionWords.length,index+4);
+
+    captions.textContent=captionWords
+      .slice(first,last)
+      .map(word=>word.text||word.word||"")
+      .join(" ");
+  }
+});
+
+audio.addEventListener("ended",()=>{
+  if(captionWords.length){
+    captions.textContent="Narration completed.";
   }
 });
 </script>
