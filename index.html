@@ -5,222 +5,459 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MotionMind AI</title>
+
 <style>
 *{box-sizing:border-box}
-body{margin:0;padding:16px;background:#10131d;color:white;font-family:Arial,sans-serif}
-.container{max-width:750px;margin:auto}
-h1{text-align:center;color:#65d9ff}
-.card{background:#1b2130;padding:17px;border-radius:14px;margin:15px 0}
-label{display:block;margin:13px 0 7px;font-weight:bold}
-input,textarea,select{width:100%;padding:12px;border:1px solid #414b60;border-radius:8px;background:#101725;color:white;font-size:15px}
-textarea{min-height:100px;resize:vertical}
-button{width:100%;padding:13px;border:0;border-radius:9px;background:#168bd0;color:white;font-size:16px;font-weight:bold;margin-top:14px}
-button:disabled{opacity:.5}
-.secondary{background:#39465c}
-.status{color:#8edcff;white-space:pre-wrap;margin-top:12px}
-video{width:100%;margin-top:15px;border-radius:10px}
-audio{width:100%;margin-top:15px}
-small{color:#aab6c9}
+
+body{
+  margin:0;
+  padding:18px;
+  background:#10131d;
+  color:#fff;
+  font-family:Arial,sans-serif;
+}
+
+.container{
+  max-width:850px;
+  margin:auto;
+}
+
+h1{
+  text-align:center;
+  color:#69a7ff;
+}
+
+.subtitle{
+  text-align:center;
+  color:#aab3c5;
+}
+
+.card{
+  background:#1b2130;
+  padding:20px;
+  border-radius:14px;
+  margin:18px 0;
+}
+
+label{
+  display:block;
+  margin:14px 0 7px;
+  font-weight:bold;
+}
+
+input,textarea,select{
+  width:100%;
+  padding:13px;
+  border:1px solid #39445a;
+  border-radius:8px;
+  background:#111725;
+  color:#fff;
+  font-size:15px;
+}
+
+textarea{
+  min-height:100px;
+  resize:vertical;
+}
+
+input[type=range]{
+  padding:0;
+}
+
+button{
+  width:100%;
+  padding:15px;
+  margin-top:18px;
+  border:0;
+  border-radius:9px;
+  background:#3478f6;
+  color:white;
+  font-size:16px;
+  font-weight:bold;
+  cursor:pointer;
+}
+
+button:disabled{
+  opacity:.5;
+  cursor:wait;
+}
+
+.small{
+  color:#aab3c5;
+  font-size:13px;
+  line-height:1.6;
+}
+
+#status{
+  margin-top:16px;
+  color:#8fc0ff;
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+}
+
+video{
+  width:100%;
+  border-radius:12px;
+  margin-top:15px;
+  background:#000;
+}
+
+audio{
+  width:100%;
+  margin-top:12px;
+}
+
+.download{
+  display:block;
+  padding:12px;
+  margin-top:10px;
+  border-radius:8px;
+  background:#263650;
+  color:white;
+  text-align:center;
+  text-decoration:none;
+}
+
+#captions{
+  background:#111725;
+  padding:14px;
+  border-radius:8px;
+  line-height:1.6;
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+}
+
+.hidden{
+  display:none;
+}
 </style>
 </head>
+
 <body>
+
 <div class="container">
 
 <h1>MotionMind AI</h1>
-<p style="text-align:center">Create AI videos with English voice narration</p>
+
+<p class="subtitle">
+Create Educational AI Videos for THE INFO HUB
+</p>
 
 <div class="card">
-<h3>🎙️ Voice Settings</h3>
 
-<label>Select English Voice</label>
+<h2>Video Generation</h2>
+
+<label for="topic">Video Topic</label>
+<input
+  id="topic"
+  placeholder="Example: Amazing facts about bees"
+>
+
+<label for="prompt">Describe Your Video Scene</label>
+<textarea
+  id="prompt"
+  placeholder="Describe the realistic 3D scenes you want to generate..."
+></textarea>
+
+<label for="narration">English Voice Narration</label>
+<textarea
+  id="narration"
+  placeholder="Write your English narration here..."
+></textarea>
+
+<label for="voice">Select Voice</label>
 <select id="voice">
-<option value="JBFqnCBsd6RMkjVDRZzb">George - Warm Storyteller</option>
-<option value="IKne3meq5aSn9XLyUdCD">Charlie - Deep and Energetic</option>
-<option value="onwK4e9ZLuTAKqWW03F9">Daniel - Steady Broadcaster</option>
+  <option value="JBFqnCBsd6RMkjVDRZzb">George</option>
+  <option value="IKne3meq5aSn9XLyUdCD">Charlie</option>
+  <option value="onwK4e9ZLuTAKqWW03F9">Daniel</option>
 </select>
 
-<label>English Voice Script</label>
-<textarea id="script" placeholder="Enter your English narration here...">Discover amazing facts with MotionMind AI! Subscribe to our channel, like this video, and follow us for more interesting information. Stay curious!</textarea>
+<label for="duration">
+Video Duration:
+<span id="durationValue">3</span> seconds
+</label>
 
-<button id="voiceBtn" onclick="generateVoice()">Generate Voice</button>
-<div id="voiceStatus" class="status"></div>
-<audio id="audioPlayer" controls style="display:none"></audio>
+<input
+  id="duration"
+  type="range"
+  min="1"
+  max="60"
+  step="1"
+  value="3"
+>
+
+<p class="small">
+Estimated Magic Hour cost:
+<strong id="cost">72 credits</strong>
+<br>
+Estimate is 24 credits per second at 480p. Actual charges may vary.
+</p>
+
+<button id="generateBtn" onclick="generateVideo()">
+Generate AI Video
+</button>
+
+<div id="status"></div>
+
 </div>
 
-<div class="card">
-<h3>🎬 AI Video Generator</h3>
+<div class="card hidden" id="resultCard">
 
-<label>Video Topic</label>
-<input id="topic" value="Subscribe to MotionMind AI">
+<h2>Your Generated Video</h2>
 
-<label>Scene Description</label>
-<textarea id="prompt">Create a cinematic realistic 3D animated YouTube channel promotion. Show a futuristic digital world, glowing information icons, science and technology elements, and an attractive animated subscribe button. Display the text SUBSCRIBE TO MOTIONMIND AI and LIKE FOR MORE. Smooth camera movements and professional lighting.</textarea>
+<video id="video" controls playsinline></video>
 
-<label>Video Duration (seconds)</label>
-<input id="duration" type="number" min="1" max="60" value="3">
-<small>Magic Hour estimated cost: 24 credits per second.</small>
+<a
+  id="videoDownload"
+  class="download"
+  target="_blank"
+  rel="noopener"
+>
+Open / Download Video
+</a>
 
-<button id="videoBtn" onclick="generateVideo()">Generate Video</button>
-<div id="videoStatus" class="status"></div>
+<div id="voiceArea" class="hidden">
 
-<video id="videoPlayer" controls style="display:none"></video>
-<a id="download" style="display:none;color:#65d9ff;margin-top:12px" download="MotionMind-video.mp4">Download Video</a>
+<h3>Selected Voice Audio</h3>
+
+<audio id="voiceAudio" controls></audio>
+
+<a
+  id="audioDownload"
+  class="download"
+  download="THE-INFO-HUB-voice.mp3"
+>
+Download Voice Audio
+</a>
+
+</div>
+
+<h3>English Captions</h3>
+
+<div id="captions"></div>
+
+<p class="small">
+Voice audio and captions are provided separately.
+They are not permanently merged into the MP4 video.
+</p>
+
 </div>
 
 </div>
 
 <script>
-const API = "https://jawad-ai-api.jawadraja00999.workers.dev/";
 
-async function requestJSON(url, options={}) {
-  const response = await fetch(url, options);
-  const text = await response.text();
+const API = "https://jawad-ai-api.jawadraja0099.workers.dev/";
 
-  let data;
-  try {
-    data = JSON.parse(text);
-  } catch {
-    throw new Error("Server response is not valid JSON: " + text.slice(0,200));
-  }
+const durationInput = document.getElementById("duration");
+const durationValue = document.getElementById("durationValue");
+const cost = document.getElementById("cost");
+const statusBox = document.getElementById("status");
+const generateBtn = document.getElementById("generateBtn");
 
-  if (!response.ok) {
-    throw new Error(data.error || data.message || "Request failed: " + response.status);
-  }
-  return data;
+let audioObjectUrl = null;
+
+durationInput.addEventListener("input", function(){
+
+  const seconds = Number(durationInput.value);
+
+  durationValue.textContent = seconds;
+
+  cost.textContent = (seconds * 24) + " credits";
+
+});
+
+function setStatus(message){
+  statusBox.textContent = message;
 }
 
-async function generateVoice() {
-  const btn = document.getElementById("voiceBtn");
-  const status = document.getElementById("voiceStatus");
-  const player = document.getElementById("audioPlayer");
+function base64ToBlob(base64,type){
 
-  const text = document.getElementById("script").value.trim();
-  const voice_id = document.getElementById("voice").value;
+  const binary = atob(base64);
 
-  if (!text) {
-    status.textContent = "Please enter a voice script.";
-    return;
+  const bytes = new Uint8Array(binary.length);
+
+  for(let i=0;i<binary.length;i++){
+    bytes[i] = binary.charCodeAt(i);
   }
 
-  btn.disabled = true;
-  status.textContent = "Generating voice...";
+  return new Blob([bytes],{type:type});
 
-  try {
-    const data = await requestJSON(API + "tts", {
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({text, voice_id})
-    });
-
-    if (!data.audio_base64) {
-      throw new Error(data.error || "Audio was not returned by the server.");
-    }
-
-    player.src = "data:audio/mpeg;base64," + data.audio_base64;
-    player.style.display = "block";
-    status.textContent = "Voice generated successfully!";
-  } catch (error) {
-    status.textContent = "Voice Error: " + error.message;
-  } finally {
-    btn.disabled = false;
-  }
 }
 
-async function generateVideo() {
-  const btn = document.getElementById("videoBtn");
-  const status = document.getElementById("videoStatus");
-  const player = document.getElementById("videoPlayer");
-  const download = document.getElementById("download");
+async function generateVideo(){
 
   const topic = document.getElementById("topic").value.trim();
+
   const prompt = document.getElementById("prompt").value.trim();
-  const duration = Number(document.getElementById("duration").value);
 
-  if (!topic || !prompt) {
-    status.textContent = "Please enter a topic and scene description.";
+  const narration = document.getElementById("narration").value.trim();
+
+  const voiceId = document.getElementById("voice").value;
+
+  const duration = Number(durationInput.value);
+
+  if(!prompt){
+    alert("Please describe your video scene.");
     return;
   }
 
-  if (!Number.isInteger(duration) || duration < 1 || duration > 60) {
-    status.textContent = "Duration must be between 1 and 60 seconds.";
+  if(!narration){
+    alert("Please enter your English narration.");
     return;
   }
 
-  btn.disabled = true;
-  player.style.display = "none";
-  download.style.display = "none";
+  generateBtn.disabled = true;
 
-  status.textContent = "Sending video request...";
+  document.getElementById("resultCard").classList.add("hidden");
 
-  try {
-    const data = await requestJSON(API + "generate", {
+  setStatus("Starting video and voice generation...");
+
+  try{
+
+    const response = await fetch(API + "generate",{
+
       method:"POST",
-      headers:{"Content-Type":"application/json"},
+
+      headers:{
+        "Content-Type":"application/json"
+      },
+
       body:JSON.stringify({
-        prompt: prompt + " Video topic: " + topic,
-        duration: duration
+
+        prompt:
+          prompt +
+          (topic ? " Topic: " + topic : "") +
+          ". Educational short for THE INFO HUB.",
+
+        narration:narration,
+
+        voice_id:voiceId,
+
+        duration:duration
+
       })
+
     });
 
-    const id = data.id || data.project_id || (data.project && data.project.id);
+    const data = await response.json();
 
-    if (!id) {
-      throw new Error(data.error || "Video project ID was not returned.");
-    }
+    if(!response.ok || !data.success || !data.id){
 
-    status.textContent = "Video is processing. Please wait...";
-
-    let completed = false;
-
-    for (let i = 0; i < 90; i++) {
-      await new Promise(resolve => setTimeout(resolve, 4000));
-
-      const result = await requestJSON(
-        API + "status?id=" + encodeURIComponent(id)
+      throw new Error(
+        data.error || "Video generation could not start."
       );
 
-      const project = result.project || result;
-      const state = String(
-        project.status || project.state || ""
-      ).toLowerCase();
-
-      const videoUrl =
-        project.video_url ||
-        project.url ||
-        (project.video && project.video.url) ||
-        (result.video && result.video.url);
-
-      if (videoUrl && (
-        state.includes("complete") ||
-        state.includes("success") ||
-        state === "completed"
-      )) {
-        player.src = videoUrl;
-        player.style.display = "block";
-        download.href = videoUrl;
-        download.style.display = "inline-block";
-        status.textContent = "Video generated successfully!";
-        completed = true;
-        break;
-      }
-
-      if (["failed","error","canceled","cancelled"].includes(state)) {
-        throw new Error(project.error || "Video generation failed.");
-      }
-
-      status.textContent = "Video processing... " + (i + 1) + "/90";
     }
 
-    if (!completed) {
-      status.textContent = "Still processing. Check again later.";
+    document.getElementById("captions").textContent = narration;
+
+    document.getElementById("resultCard").classList.remove("hidden");
+
+    if(data.voice && data.voice.audio_base64){
+
+      const blob = base64ToBlob(
+        data.voice.audio_base64,
+        "audio/mpeg"
+      );
+
+      if(audioObjectUrl){
+        URL.revokeObjectURL(audioObjectUrl);
+      }
+
+      audioObjectUrl = URL.createObjectURL(blob);
+
+      const audio = document.getElementById("voiceAudio");
+
+      audio.src = audioObjectUrl;
+
+      document.getElementById("audioDownload").href = audioObjectUrl;
+
+      document.getElementById("voiceArea").classList.remove("hidden");
+
+    }else{
+
+      document.getElementById("voiceArea").classList.add("hidden");
+
+      if(data.voice && data.voice.error){
+        setStatus("Video started. Voice issue: " + data.voice.error);
+      }
+
     }
 
-  } catch (error) {
-    status.textContent = "Video Error: " + error.message;
-  } finally {
-    btn.disabled = false;
+    await checkStatus(data.id);
+
+  }catch(error){
+
+    setStatus("Error: " + error.message);
+
+  }finally{
+
+    generateBtn.disabled = false;
+
   }
+
 }
+
+async function checkStatus(id){
+
+  for(let attempt=1;attempt<=90;attempt++){
+
+    setStatus(
+      "Video is processing... Please wait. (" +
+      attempt +
+      "/90)"
+    );
+
+    await new Promise(resolve=>setTimeout(resolve,4000));
+
+    const response = await fetch(
+      API + "status?id=" + encodeURIComponent(id)
+    );
+
+    const data = await response.json();
+
+    if(!response.ok){
+
+      throw new Error(
+        data.error || "Could not check video status."
+      );
+
+    }
+
+    if(data.status === "complete" && data.video_url){
+
+      const video = document.getElementById("video");
+
+      video.src = data.video_url;
+
+      document.getElementById("videoDownload").href =
+        data.video_url;
+
+      setStatus("Video completed successfully!");
+
+      return;
+
+    }
+
+    if(data.status === "error" || data.status === "canceled"){
+
+      throw new Error(
+        data.error?.message ||
+        "Video generation ended with status: " + data.status
+      );
+
+    }
+
+  }
+
+  setStatus(
+    "Video is taking longer than expected. Please check again later."
+  );
+
+}
+
 </script>
+
 </body>
 </html>
