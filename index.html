@@ -32,26 +32,14 @@ small,.mode-note{color:#aab4c8}
 
 <label>Choose Video Mode</label>
 <select id="mode">
-<option value="photo">📸 Photo Video</option>
-<option value="cartoon">🎨 Cartoon Video</option>
-<option value="vegetable">🥔 Talking Vegetables</option>
+<option value="photo">📸 Photo Informative Video</option>
+<option value="cartoon">🎨 Cartoon Informative Video</option>
 </select>
 
 <p class="mode-note" id="modeNote"></p>
 
-<div id="vegetableOptions" style="display:none">
-<label>Select Character</label>
-<select id="character">
-<option value="potato">🥔 Aloo</option>
-<option value="tomato">🍅 Tamatar</option>
-<option value="pea">🟢 Matar</option>
-<option value="carrot">🥕 Carrot</option>
-<option value="onion">🧅 Onion</option>
-</select>
-</div>
-
 <label>Your Video Script</label>
-<textarea id="script" placeholder="Paste your complete video script here..."></textarea>
+<textarea id="script" placeholder="Paste your complete informative video script here..."></textarea>
 
 <div class="row">
 <div>
@@ -122,7 +110,7 @@ let voices=[];
 let scenes=[];
 let videoBlob=null;
 let downloadUrl=null;
-let loadingVoices=false;
+let voiceRequestNumber=0;
 
 function status(message){
  $("status").textContent=message;
@@ -139,61 +127,50 @@ function currentLanguage(){
 function updateMode(){
  const mode=currentMode();
 
- $("vegetableOptions").style.display=
-  mode==="vegetable"?"block":"none";
-
  $("language").value=currentLanguage();
-
  $("language").disabled=true;
 
- $("modeNote").textContent={
-  photo:"English AI voice with photo scenes.",
-  cartoon:"Hindi AI voice with cartoon-style images.",
-  vegetable:"Hindi AI voice for animated vegetable characters."
- }[mode];
+ $("modeNote").textContent=mode==="photo"
+  ?"English AI voice with informative photo scenes."
+  :"Hindi AI voice with cartoon-style scenes for any informative topic.";
 
  loadVoices();
 }
 
 async function loadVoices(){
- if(loadingVoices)return;
-
- loadingVoices=true;
-
+ const requestNumber=++voiceRequestNumber;
  const select=$("voice");
+
  select.innerHTML='<option value="">Loading voices...</option>';
 
  try{
   const mode=currentMode();
-  const character=$("character").value;
 
   const url=API+"?action=voices&mode="+
-   encodeURIComponent(mode)+
-   "&character="+encodeURIComponent(character);
+   encodeURIComponent(mode);
 
   const response=await fetch(url);
 
-  if(!response.ok)throw new Error("Voice API error "+response.status);
+  if(!response.ok){
+   throw new Error("Voice API error: "+response.status);
+  }
 
   const data=await response.json();
 
-  if(mode!==currentMode()){
-   return;
-  }
+  if(requestNumber!==voiceRequestNumber)return;
 
   voices=data.voices||[];
-
   filterVoices();
 
-  status(voices.length?
-   "Voices loaded successfully.":
-   "No matching voices found. Check FreeTTS voice availability.");
+  status(voices.length
+   ?"Voices loaded successfully."
+   :"No matching voices found. Check FreeTTS voice availability.");
 
  }catch(error){
+  if(requestNumber!==voiceRequestNumber)return;
+
   select.innerHTML='<option value="">Could not load voices</option>';
   status("Voice error: "+error.message);
- }finally{
-  loadingVoices=false;
  }
 }
 
@@ -222,7 +199,6 @@ function filterVoices(){
 }
 
 $("mode").addEventListener("change",updateMode);
-$("character").addEventListener("change",loadVoices);
 $("gender").addEventListener("change",filterVoices);
 $("refreshVoices").addEventListener("click",loadVoices);
 
@@ -233,9 +209,11 @@ function splitScript(text){
  if(parts.length>30){
   const groupSize=Math.ceil(parts.length/30);
   const grouped=[];
+
   for(let i=0;i<parts.length;i+=groupSize){
    grouped.push(parts.slice(i,i+groupSize).join(" "));
   }
+
   parts=grouped;
  }
 
@@ -247,7 +225,9 @@ async function getImage(query){
   API+"?query="+encodeURIComponent(query)
  );
 
- if(!response.ok)throw new Error("Image API error");
+ if(!response.ok){
+  throw new Error("Image API error: "+response.status);
+ }
 
  const data=await response.json();
 
@@ -263,7 +243,8 @@ function loadImage(url){
   img.onload=()=>resolve(img);
   img.onerror=()=>reject(new Error("Image could not load"));
   img.src=url;
- });
+ }
+ );
 }
 
 async function prepareScenes(script){
@@ -272,20 +253,16 @@ async function prepareScenes(script){
 
  const mode=currentMode();
 
- if(mode==="vegetable"){
-  scenes=sentences.map(text=>({text,image:null}));
-  return;
- }
-
  for(let i=0;i<sentences.length;i++){
   const sentence=sentences[i];
+
   let query=sentence.split(/\s+/).slice(0,8).join(" ");
 
   if(mode==="cartoon"){
-   query="3D cartoon illustration "+query;
+   query="cartoon illustration animated characters "+query;
   }
 
-  status("Finding image "+(i+1)+" of "+sentences.length+"...");
+  status("Finding scene "+(i+1)+" of "+sentences.length+"...");
 
   try{
    const result=await getImage(query);
@@ -295,14 +272,18 @@ async function prepareScenes(script){
     text:sentence,
     image:img
    });
+
   }catch(error){
    console.warn(error);
-   scenes.push({text:sentence,image:null});
+   scenes.push({
+    text:sentence,
+    image:null
+   });
   }
  }
 
  if(!scenes.some(s=>s.image)){
-  throw new Error("No images could be loaded.");
+  throw new Error("No images could be loaded. Please try again.");
  }
 }
 
@@ -350,6 +331,7 @@ function drawCaption(text){
 
  for(const word of words){
   const test=line?line+" "+word:word;
+
   if(ctx.measureText(test).width>maxWidth&&line){
    lines.push(line);
    line=word;
@@ -370,7 +352,12 @@ function drawCaption(text){
  ctx.fillStyle="#fff";
 
  lines.forEach((item,index)=>{
-  ctx.fillText(item,w/2,boxY+24+lineHeight*(index+.5),maxWidth);
+  ctx.fillText(
+   item,
+   w/2,
+   boxY+24+lineHeight*(index+.5),
+   maxWidth
+  );
  });
 }
 
@@ -403,184 +390,8 @@ function drawImageScene(scene){
  if(scene)drawCaption(scene.text);
 }
 
-function roundedGradient(x,y,w,h,c1,c2){
- const g=ctx.createLinearGradient(x,y,x+w,y+h);
- g.addColorStop(0,c1);
- g.addColorStop(1,c2);
- return g;
-}
-
-function drawVegetable(type,x,y,size,time,second){
- const bounce=Math.sin(time*3+(second?2:0))*size*.025;
- const wave=Math.sin(time*5+(second?1:0))*.35;
-
- ctx.save();
- ctx.translate(x,y+bounce);
-
- ctx.fillStyle="rgba(0,0,0,.28)";
- ctx.beginPath();
- ctx.ellipse(0,size*.57,size*.36,size*.09,0,0,Math.PI*2);
- ctx.fill();
-
- ctx.strokeStyle="#263244";
- ctx.lineWidth=size*.065;
- ctx.lineCap="round";
-
- for(let i=-1;i<=1;i+=2){
-  const legWave=Math.sin(time*5+i)*size*.045;
-
-  ctx.beginPath();
-  ctx.moveTo(i*size*.15,size*.35);
-  ctx.lineTo(i*size*.19+legWave,size*.52);
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.moveTo(i*size*.19+legWave,size*.52);
-  ctx.lineTo(i*size*.27+legWave,size*.53);
-  ctx.stroke();
- }
-
- for(let i=-1;i<=1;i+=2){
-  ctx.beginPath();
-  ctx.moveTo(i*size*.29,0);
-  ctx.lineTo(i*size*.43,-size*.06+wave*size*.12*i);
-  ctx.stroke();
-
-  ctx.fillStyle="#f2bd91";
-  ctx.beginPath();
-  ctx.arc(i*size*.43,-size*.06+wave*size*.12*i,size*.055,0,Math.PI*2);
-  ctx.fill();
- }
-
- let bodyGradient;
- ctx.beginPath();
-
- if(type==="tomato"){
-  bodyGradient=roundedGradient(-size*.35,-size*.4,size*.7,size*.85,"#ff8b78","#b91c1c");
-  ctx.moveTo(0,-size*.4);
-  ctx.bezierCurveTo(size*.65,-size*.52,size*.62,size*.28,0,size*.4);
-  ctx.bezierCurveTo(-size*.62,size*.28,-size*.65,-size*.52,0,-size*.4);
- }else if(type==="pea"){
-  bodyGradient=roundedGradient(-size*.35,-size*.35,size*.7,size*.8,"#b6f58a","#268d32");
-  ctx.ellipse(0,0,size*.35,size*.43,0,0,Math.PI*2);
- }else if(type==="carrot"){
-  bodyGradient=roundedGradient(-size*.3,-size*.4,size*.6,size*.85,"#ffc15b","#d65b0b");
-  ctx.moveTo(-size*.32,-size*.4);
-  ctx.quadraticCurveTo(size*.34,-size*.45,size*.29,-size*.05);
-  ctx.lineTo(0,size*.47);
-  ctx.lineTo(-size*.29,-size*.05);
-  ctx.closePath();
- }else if(type==="onion"){
-  bodyGradient=roundedGradient(-size*.35,-size*.4,size*.7,size*.85,"#f6c6ff","#9953bb");
-  ctx.ellipse(0,0,size*.34,size*.44,0,0,Math.PI*2);
- }else{
-  bodyGradient=roundedGradient(-size*.38,-size*.4,size*.76,size*.85,"#e8c18b","#93602f");
-  ctx.ellipse(0,0,size*.38,size*.43,0,0,Math.PI*2);
- }
-
- ctx.fillStyle=bodyGradient;
- ctx.fill();
- ctx.strokeStyle="rgba(70,35,15,.25)";
- ctx.lineWidth=3;
- ctx.stroke();
-
- if(type==="tomato"||type==="carrot"||type==="pea"){
-  ctx.fillStyle="#23833b";
-  for(let i=-1;i<=1;i++){
-   ctx.beginPath();
-   ctx.ellipse(i*size*.08,-size*.39,size*.09,size*.19,i*.5,0,Math.PI*2);
-   ctx.fill();
-  }
- }
-
- const eyeY=-size*.04;
- const eyeX=size*.125;
-
- ctx.fillStyle="#fff";
-
- for(let i=-1;i<=1;i+=2){
-  ctx.beginPath();
-  ctx.ellipse(i*eyeX,eyeY,size*.075,size*.095,0,0,Math.PI*2);
-  ctx.fill();
-
-  ctx.fillStyle="#172033";
-  ctx.beginPath();
-  ctx.arc(i*eyeX+size*.018,eyeY+size*.01,size*.039,0,Math.PI*2);
-  ctx.fill();
-
-  ctx.fillStyle="#fff";
- }
-
- const mouthOpen=(Math.sin(time*12)+1)/2;
-
- ctx.fillStyle="#651d25";
- ctx.beginPath();
- ctx.ellipse(0,size*.17,size*.085,size*(.025+mouthOpen*.045),0,0,Math.PI*2);
- ctx.fill();
-
- ctx.fillStyle="rgba(255,120,120,.5)";
- ctx.beginPath();
- ctx.arc(-size*.23,size*.12,size*.045,0,Math.PI*2);
- ctx.arc(size*.23,size*.12,size*.045,0,Math.PI*2);
- ctx.fill();
-
- ctx.restore();
-}
-
-function drawVegetableScene(scene,time){
- const w=canvas.width;
- const h=canvas.height;
-
- const bg=ctx.createLinearGradient(0,0,0,h);
- bg.addColorStop(0,"#173f68");
- bg.addColorStop(.65,"#3c805b");
- bg.addColorStop(1,"#193c32");
-
- ctx.fillStyle=bg;
- ctx.fillRect(0,0,w,h);
-
- for(let i=0;i<12;i++){
-  const px=(i*137+time*8)%(w+80)-40;
-  const py=(i*193)%(h*.65);
-
-  ctx.fillStyle="rgba(255,255,255,.12)";
-  ctx.beginPath();
-  ctx.arc(px,py,12+(i%3)*5,0,Math.PI*2);
-  ctx.fill();
- }
-
- ctx.fillStyle="#234c36";
- ctx.fillRect(0,h*.68,w,h*.32);
-
- const type=$("character").value;
- const size=Math.min(w*.7,h*.35);
-
- drawVegetable(type,w*.5,h*.43,size,time,false);
-
- const companion={
-  potato:"tomato",
-  tomato:"pea",
-  pea:"carrot",
-  carrot:"onion",
-  onion:"potato"
- }[type];
-
- drawVegetable(companion,w*.17,h*.56,size*.43,time,true);
-
- ctx.fillStyle="#fff";
- ctx.font="bold "+Math.max(22,w*.045)+"px Arial";
- ctx.textAlign="center";
- ctx.fillText("Talking Vegetables",w/2,h*.1);
-
- if(scene)drawCaption(scene.text);
-}
-
-function drawScene(scene,time){
- if(currentMode()==="vegetable"){
-  drawVegetableScene(scene,time);
- }else{
-  drawImageScene(scene);
- }
+function drawScene(scene){
+ drawImageScene(scene);
 }
 
 async function createVideo(){
@@ -608,7 +419,9 @@ async function createVideo(){
 
  const AudioContextClass=window.AudioContext||window.webkitAudioContext;
 
- if(!AudioContextClass)throw new Error("Audio recording is not supported.");
+ if(!AudioContextClass){
+  throw new Error("Audio recording is not supported.");
+ }
 
  const audioContext=new AudioContextClass();
  await audioContext.resume();
@@ -638,9 +451,13 @@ async function createVideo(){
   "video/webm"
  ];
 
- const mimeType=mimeTypes.find(type=>MediaRecorder.isTypeSupported(type));
+ const mimeType=mimeTypes.find(type=>
+  MediaRecorder.isTypeSupported(type)
+ );
 
- if(!mimeType)throw new Error("Unsupported video format.");
+ if(!mimeType){
+  throw new Error("Unsupported video format.");
+ }
 
  const recorder=new MediaRecorder(combinedStream,{mimeType});
  const chunks=[];
@@ -673,7 +490,7 @@ async function createVideo(){
    Math.floor(progress*scenes.length)
   );
 
-  drawScene(scenes[index],elapsed);
+  drawScene(scenes[index]);
 
   if(elapsed>=totalDuration)break;
 
@@ -688,7 +505,9 @@ async function createVideo(){
 
  videoBlob=new Blob(chunks,{type:mimeType});
 
- if(!videoBlob.size)throw new Error("Video could not be created.");
+ if(!videoBlob.size){
+  throw new Error("Video could not be created.");
+ }
 
  const extension=mimeType.includes("mp4")?"mp4":"webm";
 
@@ -712,7 +531,7 @@ async function createVideo(){
   "Mode: "+$("mode").selectedOptions[0].textContent+"\n"+
   "Format: "+extension.toUpperCase()+"\n"+
   "AI voice included.\n"+
-  "Tap Download video."
+  "Tap Download Video."
  );
 }
 
