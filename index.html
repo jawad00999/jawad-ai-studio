@@ -5,115 +5,54 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MotionMind AI</title>
-
 <style>
 *{box-sizing:border-box}
-
-body{
- margin:0;
- padding:18px;
- background:#0c1220;
- color:#fff;
- font-family:Arial,sans-serif;
-}
-
+body{margin:0;padding:18px;background:#0c1220;color:#fff;font-family:Arial,sans-serif}
 .container{max-width:700px;margin:auto}
-
 h1{text-align:center;color:#60a5fa}
 .subtitle{text-align:center;color:#aab4c8}
-
-.panel{
- background:#182235;
- border:1px solid #334155;
- border-radius:15px;
- padding:18px;
- margin:18px 0;
-}
-
-label{
- display:block;
- margin:14px 0 7px;
- font-weight:bold;
-}
-
-input,textarea,select{
- width:100%;
- padding:13px;
- border-radius:9px;
- border:1px solid #475569;
- background:#0c1424;
- color:white;
- font-size:15px;
-}
-
+.panel{background:#182235;border:1px solid #334155;border-radius:15px;padding:18px;margin:18px 0}
+label{display:block;margin:14px 0 7px;font-weight:bold}
+input,textarea,select{width:100%;padding:13px;border-radius:9px;border:1px solid #475569;background:#0c1424;color:white;font-size:15px}
 textarea{min-height:110px}
-
-button{
- width:100%;
- padding:15px;
- margin-top:16px;
- border:0;
- border-radius:9px;
- background:#2563eb;
- color:white;
- font-size:16px;
- font-weight:bold;
-}
-
+button{width:100%;padding:15px;margin-top:16px;border:0;border-radius:9px;background:#2563eb;color:white;font-size:16px;font-weight:bold}
 button:disabled{opacity:.5}
-
-#status,#voiceStatus{
- text-align:center;
- color:#93c5fd;
- white-space:pre-wrap;
- line-height:1.5;
-}
-
-video{
- width:100%;
- max-height:500px;
- background:#000;
- border-radius:12px;
-}
-
-audio{width:100%;margin-top:12px}
-
-#download{
- display:none;
- color:#86efac;
- text-align:center;
- margin-top:15px;
-}
-
-.note{
- font-size:12px;
- color:#aab4c8;
- line-height:1.5;
-}
-
-#captions{
- background:#080d18;
- border-radius:10px;
- padding:22px 12px;
- text-align:center;
- font-size:23px;
- font-weight:bold;
- min-height:85px;
- margin-top:15px;
- color:#fff;
-}
+#status,#voiceStatus{text-align:center;color:#93c5fd;white-space:pre-wrap;line-height:1.5}
+video,audio{width:100%;margin-top:12px}
+#download{color:#86efac;margin-top:15px}
+.note{font-size:12px;color:#aab4c8;line-height:1.5}
+#captions{background:#0c1424;padding:14px;border-radius:9px;min-height:55px;text-align:center;color:#facc15}
 </style>
 </head>
-
 <body>
-
 <div class="container">
-
 <h1>MotionMind AI</h1>
 <p class="subtitle">AI Video Generator</p>
 
 <div class="panel">
+<h3>AI Voice Generator</h3>
 
+<label>Choose Your Voice</label>
+<select id="voice">
+<option value="JBFqnCBsd6RMkjVDRZzb">George - Warm Storyteller</option>
+<option value="onwK4e9ZLuTAKqWW03F9">Daniel - Professional Broadcaster</option>
+<option value="IKne3meq5aSn9XLyUdCD">Charlie - Energetic Narrator</option>
+</select>
+
+<label>English Narration Script</label>
+<textarea id="script" placeholder="Paste your English script here..."></textarea>
+
+<button id="voiceButton">Generate Selected Voice</button>
+<p id="voiceStatus">Choose a voice and enter your script.</p>
+
+<audio id="audio" controls></audio>
+
+<h4>Live Captions</h4>
+<div id="captions">Your captions will appear here.</div>
+<p class="note">Voice generation uses your ElevenLabs account, not Magic Hour video credits.</p>
+</div>
+
+<div class="panel">
 <label>Video Topic</label>
 <input id="topic" placeholder="Example: Amazing Facts About Bees">
 
@@ -127,319 +66,196 @@ audio{width:100%;margin-top:12px}
 </select>
 
 <button id="generate">Generate AI Video</button>
-
-<p class="note">
-Test version: generates a 3-second AI video clip.
-Generation uses your Magic Hour account credits.
-</p>
-
+<p class="note">Test version: generates a 3-second AI video clip. Generation uses your Magic Hour account credits.</p>
 </div>
 
 <div class="panel">
-
-<h3>George AI Voice</h3>
-
-<label>English Narration Script</label>
-<textarea id="script" placeholder="Write your English narration here..."></textarea>
-
-<label>Selected Voice</label>
-<select id="voice">
-<option value="JBFqnCBsd6RMkjVDRZzb">
-George - Warm Storyteller
-</option>
-</select>
-
-<button id="generateVoice">Generate George Voice</button>
-
-<audio id="audioPreview" controls></audio>
-
-<div id="captions">
-Your synchronized captions will appear here.
-</div>
-
-<p id="voiceStatus">Voice ready.</p>
-
-<p class="note">
-Voice generation uses your ElevenLabs account.
-Captions are displayed during audio playback.
-</p>
-
-</div>
-
-<div class="panel">
-
 <h3>Video Preview</h3>
-
 <video id="preview" controls playsinline></video>
-
 <p id="status">Ready to generate.</p>
-
-<a id="download" download="motionmind-video.mp4">
-Download Video
-</a>
-
+<a id="download" download="motionmind-video.mp4" style="display:none">Download Video</a>
 </div>
 </div>
 
 <script>
-
 const API="https://jawad-ai-api.jawadraja00999.workers.dev/";
+
+const voiceButton=document.getElementById("voiceButton");
+const voiceStatus=document.getElementById("voiceStatus");
+const audio=document.getElementById("audio");
+const captions=document.getElementById("captions");
+
+let captionWords=[];
+
+voiceButton.addEventListener("click",async()=>{
+  const text=document.getElementById("script").value.trim();
+  const voiceId=document.getElementById("voice").value;
+
+  if(!text){
+    voiceStatus.textContent="Please enter your English script.";
+    return;
+  }
+
+  voiceButton.disabled=true;
+  voiceStatus.textContent="Generating selected voice...";
+
+  try{
+    const response=await fetch(API+"tts",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        text:text,
+        voice_id:voiceId,
+        voiceId:voiceId
+      })
+    });
+
+    const data=await response.json();
+
+    if(!response.ok){
+      throw new Error(data.error||data.message||"Voice generation failed.");
+    }
+
+    if(!data.audio_base64){
+      throw new Error("Audio was not returned by the server.");
+    }
+
+    const binary=atob(data.audio_base64);
+    const bytes=new Uint8Array(binary.length);
+
+    for(let i=0;i<binary.length;i++){
+      bytes[i]=binary.charCodeAt(i);
+    }
+
+    const blob=new Blob([bytes],{type:"audio/mpeg"});
+    audio.src=URL.createObjectURL(blob);
+
+    captionWords=Array.isArray(data.words)?data.words:[];
+    captions.textContent="Press play to see captions.";
+
+    voiceStatus.textContent="Your selected voice is ready!";
+  }catch(error){
+    voiceStatus.textContent="Error: "+error.message;
+  }finally{
+    voiceButton.disabled=false;
+  }
+});
+
+audio.addEventListener("timeupdate",()=>{
+  if(!captionWords.length)return;
+
+  const current=audio.currentTime;
+  const active=captionWords.find(w=>
+    current>=Number(w.start||0)&&current<=Number(w.end||0)
+  );
+
+  if(active){
+    captions.textContent=active.text||active.word||"";
+  }
+});
 
 const button=document.getElementById("generate");
 const statusBox=document.getElementById("status");
 const preview=document.getElementById("preview");
 const download=document.getElementById("download");
 
-const voiceButton=document.getElementById("generateVoice");
-const voiceStatus=document.getElementById("voiceStatus");
-const audio=document.getElementById("audioPreview");
-const captions=document.getElementById("captions");
-
-let captionWords=[];
-let audioObjectUrl=null;
-
 function status(message){
- statusBox.textContent=message;
+  statusBox.textContent=message;
 }
 
 function getVideoUrl(data){
+  const files=data.downloads;
 
- const files=data.downloads;
+  if(Array.isArray(files)){
+    const item=files.find(x=>x.url||x.download_url);
+    if(item)return item.url||item.download_url;
+  }
 
- if(Array.isArray(files)){
-  const item=files.find(x=>x.url||x.download_url);
-  if(item)return item.url||item.download_url;
- }
-
- if(typeof files==="string")return files;
-
- return data.download_url||data.video_url||data.url||null;
+  if(typeof files==="string")return files;
+  return data.download_url||data.video_url||data.url||null;
 }
-
-// CHECK VIDEO STATUS
 
 async function checkStatus(id){
+  for(let i=0;i<90;i++){
+    await new Promise(resolve=>setTimeout(resolve,4000));
+    status("Rendering your video... Please wait.");
 
- for(let i=0;i<90;i++){
+    const response=await fetch(
+      API+"status?id="+encodeURIComponent(id)
+    );
 
-  await new Promise(resolve=>setTimeout(resolve,4000));
+    const data=await response.json();
 
-  status("Rendering your video... Please wait.");
+    if(!response.ok){
+      throw new Error(data.error||"Status check failed.");
+    }
 
-  const response=await fetch(
-   API+"status?id="+encodeURIComponent(id)
-  );
+    if(data.status==="complete"){
+      const videoUrl=getVideoUrl(data);
+      if(!videoUrl)throw new Error("Video completed, but no download URL was returned.");
+      return videoUrl;
+    }
 
-  const data=await response.json();
-
-  if(!response.ok){
-   throw new Error(data.error||"Status check failed.");
+    if(data.status==="error"||data.status==="canceled"){
+      throw new Error(data.error?.message||data.error||"Video generation failed.");
+    }
   }
 
-  if(data.status==="complete"){
-
-   const videoUrl=getVideoUrl(data);
-
-   if(!videoUrl){
-    throw new Error("Video completed, but no download URL was returned.");
-   }
-
-   return videoUrl;
-  }
-
-  if(data.status==="error"||data.status==="canceled"){
-   throw new Error(data.error?.message||data.error||"Video generation failed.");
-  }
- }
-
- throw new Error("Generation is taking longer than expected.");
+  throw new Error("Generation is taking longer than expected.");
 }
 
-// MAGIC HOUR VIDEO GENERATION
-
 button.addEventListener("click",async()=>{
+  const topic=document.getElementById("topic").value.trim();
+  const prompt=document.getElementById("prompt").value.trim();
 
- const topic=document.getElementById("topic").value.trim();
- const prompt=document.getElementById("prompt").value.trim();
-
- if(!topic||!prompt){
-  status("Please enter a topic and scene description.");
-  return;
- }
-
- button.disabled=true;
- download.style.display="none";
- preview.removeAttribute("src");
- preview.load();
-
- try{
-
-  status("Submitting your video request...");
-
-  const response=await fetch(API+"generate",{
-   method:"POST",
-   headers:{"Content-Type":"application/json"},
-   body:JSON.stringify({
-    prompt:prompt+" Topic: "+topic+
-    ". Cinematic 3D animation, smooth movement, detailed environment."
-   })
-  });
-
-  const created=await response.json();
-
-  if(!response.ok){
-   throw new Error(created.error||created.message||"Video request failed.");
+  if(!topic||!prompt){
+    status("Please enter a topic and scene description.");
+    return;
   }
 
-  const id=created.id||created.project_id||created.project?.id;
+  button.disabled=true;
+  download.style.display="none";
+  preview.removeAttribute("src");
+  preview.load();
 
-  if(!id){
-   throw new Error("Project ID missing. Server response: "+JSON.stringify(created));
+  try{
+    status("Submitting your video request...");
+
+    const response=await fetch(API+"generate",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        prompt:prompt+" Topic: "+topic+". Cinematic 3D animation, smooth movement, detailed environment."
+      })
+    });
+
+    const created=await response.json();
+
+    if(!response.ok){
+      throw new Error(created.error||created.message||"Video request failed.");
+    }
+
+    const id=created.id||created.project_id||created.project?.id;
+
+    if(!id){
+      throw new Error("Project ID missing.");
+    }
+
+    status("Request accepted. Project ID: "+id);
+
+    const videoUrl=await checkStatus(id);
+
+    preview.src=videoUrl;
+    download.href=videoUrl;
+    download.style.display="block";
+    status("Your AI video is ready!");
+
+  }catch(error){
+    status("Error: "+error.message);
+  }finally{
+    button.disabled=false;
   }
-
-  status("Request accepted. Project ID: "+id);
-
-  const videoUrl=await checkStatus(id);
-
-  preview.src=videoUrl;
-  download.href=videoUrl;
-  download.style.display="block";
-
-  status("Your AI video is ready!");
-
- }catch(error){
-
-  status("Error: "+error.message);
-
- }finally{
-
-  button.disabled=false;
-
- }
-
 });
-
-// ELEVENLABS GEORGE VOICE
-
-voiceButton.addEventListener("click",async()=>{
-
- const text=document.getElementById("script").value.trim();
- const voiceId=document.getElementById("voice").value;
-
- if(!text){
-  voiceStatus.textContent="Please enter your narration script.";
-  return;
- }
-
- if(text.length>1500){
-  voiceStatus.textContent="Please keep the script under 1500 characters.";
-  return;
- }
-
- voiceButton.disabled=true;
- captions.textContent="Generating voice...";
- voiceStatus.textContent="Connecting to ElevenLabs...";
-
- try{
-
-  const response=await fetch(API+"tts",{
-   method:"POST",
-   headers:{"Content-Type":"application/json"},
-   body:JSON.stringify({
-    text:text,
-    voice_id:voiceId
-   })
-  });
-
-  const data=await response.json();
-
-  if(!response.ok){
-   throw new Error(data.error||data.message||"Voice generation failed.");
-  }
-
-  if(!data.audio_base64){
-   throw new Error("Audio data was not returned by the server.");
-  }
-
-  const binary=atob(data.audio_base64);
-  const bytes=new Uint8Array(binary.length);
-
-  for(let i=0;i<binary.length;i++){
-   bytes[i]=binary.charCodeAt(i);
-  }
-
-  const audioBlob=new Blob([bytes],{type:"audio/mpeg"});
-
-  if(audioObjectUrl){
-   URL.revokeObjectURL(audioObjectUrl);
-  }
-
-  audioObjectUrl=URL.createObjectURL(audioBlob);
-  audio.src=audioObjectUrl;
-
-  captionWords=Array.isArray(data.words)?data.words:[];
-
-  captions.textContent=captionWords.length
-   ?"Press play to see synchronized captions."
-   :"Voice ready. Word timing data was not returned.";
-
-  voiceStatus.textContent="George voice generated successfully!";
-
-  audio.load();
-
- }catch(error){
-
-  captions.textContent="Captions will appear here.";
-  voiceStatus.textContent="Error: "+error.message;
-
- }finally{
-
-  voiceButton.disabled=false;
-
- }
-
-});
-
-// SYNCHRONIZED CAPTIONS
-
-audio.addEventListener("timeupdate",()=>{
-
- if(!captionWords.length)return;
-
- const currentTime=audio.currentTime;
-
- const index=captionWords.findIndex(word=>{
-
-  const start=Number(word.start);
-  const end=Number(word.end);
-
-  return currentTime>=start&&currentTime<=end;
-
- });
-
- if(index>=0){
-
-  const first=Math.max(0,index-2);
-  const last=Math.min(captionWords.length,index+4);
-
-  captions.textContent=captionWords
-   .slice(first,last)
-   .map(word=>word.text||word.word||"")
-   .join(" ");
-
- }
-
-});
-
-audio.addEventListener("ended",()=>{
-
- if(captionWords.length){
-  captions.textContent="Narration completed.";
- }
-
-});
-
 </script>
-
 </body>
 </html>
