@@ -17,20 +17,10 @@ body{
   font-family:Arial,sans-serif;
 }
 
-.container{
-  max-width:850px;
-  margin:auto;
-}
+.container{max-width:850px;margin:auto}
 
-h1{
-  text-align:center;
-  color:#69a7ff;
-}
-
-.subtitle{
-  text-align:center;
-  color:#aab3c5;
-}
+h1{text-align:center;color:#69a7ff}
+.subtitle{text-align:center;color:#aab3c5}
 
 .card{
   background:#1b2130;
@@ -55,14 +45,8 @@ input,textarea,select{
   font-size:15px;
 }
 
-textarea{
-  min-height:100px;
-  resize:vertical;
-}
-
-input[type=range]{
-  padding:0;
-}
+textarea{min-height:100px;resize:vertical}
+input[type=range]{padding:0}
 
 button{
   width:100%;
@@ -77,10 +61,7 @@ button{
   cursor:pointer;
 }
 
-button:disabled{
-  opacity:.5;
-  cursor:wait;
-}
+button:disabled{opacity:.5;cursor:wait}
 
 .small{
   color:#aab3c5;
@@ -102,10 +83,7 @@ video{
   background:#000;
 }
 
-audio{
-  width:100%;
-  margin-top:12px;
-}
+audio{width:100%;margin-top:12px}
 
 .download{
   display:block;
@@ -127,9 +105,7 @@ audio{
   overflow-wrap:anywhere;
 }
 
-.hidden{
-  display:none;
-}
+.hidden{display:none}
 </style>
 </head>
 
@@ -138,7 +114,6 @@ audio{
 <div class="container">
 
 <h1>MotionMind AI</h1>
-
 <p class="subtitle">
 Create Educational AI Videos for THE INFO HUB
 </p>
@@ -148,28 +123,22 @@ Create Educational AI Videos for THE INFO HUB
 <h2>Video Generation</h2>
 
 <label for="topic">Video Topic</label>
-<input
-  id="topic"
-  placeholder="Example: Amazing facts about bees"
->
+<input id="topic"
+placeholder="Example: Amazing facts about bees">
 
 <label for="prompt">Describe Your Video Scene</label>
-<textarea
-  id="prompt"
-  placeholder="Describe the realistic 3D scenes you want to generate..."
-></textarea>
+<textarea id="prompt"
+placeholder="Describe the realistic 3D scenes you want to generate..."></textarea>
 
 <label for="narration">English Voice Narration</label>
-<textarea
-  id="narration"
-  placeholder="Write your English narration here..."
-></textarea>
+<textarea id="narration"
+placeholder="Write your English narration here..."></textarea>
 
 <label for="voice">Select Voice</label>
 <select id="voice">
-  <option value="JBFqnCBsd6RMkjVDRZzb">George</option>
-  <option value="IKne3meq5aSn9XLyUdCD">Charlie</option>
-  <option value="onwK4e9ZLuTAKqWW03F9">Daniel</option>
+<option value="JBFqnCBsd6RMkjVDRZzb">George</option>
+<option value="IKne3meq5aSn9XLyUdCD">Charlie</option>
+<option value="onwK4e9ZLuTAKqWW03F9">Daniel</option>
 </select>
 
 <label for="duration">
@@ -178,19 +147,20 @@ Video Duration:
 </label>
 
 <input
-  id="duration"
-  type="range"
-  min="1"
-  max="60"
-  step="1"
-  value="3"
+id="duration"
+type="range"
+min="1"
+max="60"
+step="1"
+value="3"
 >
 
 <p class="small">
 Estimated Magic Hour cost:
 <strong id="cost">72 credits</strong>
 <br>
-Estimate is 24 credits per second at 480p. Actual charges may vary.
+Estimate is 24 credits per second at 480p.
+Actual charges may vary.
 </p>
 
 <button id="generateBtn" onclick="generateVideo()">
@@ -207,12 +177,10 @@ Generate AI Video
 
 <video id="video" controls playsinline></video>
 
-<a
-  id="videoDownload"
-  class="download"
-  target="_blank"
-  rel="noopener"
->
+<a id="videoDownload"
+class="download"
+target="_blank"
+rel="noopener">
 Open / Download Video
 </a>
 
@@ -222,11 +190,9 @@ Open / Download Video
 
 <audio id="voiceAudio" controls></audio>
 
-<a
-  id="audioDownload"
-  class="download"
-  download="THE-INFO-HUB-voice.mp3"
->
+<a id="audioDownload"
+class="download"
+download="THE-INFO-HUB-voice.mp3">
 Download Voice Audio
 </a>
 
@@ -247,7 +213,8 @@ They are not permanently merged into the MP4 video.
 
 <script>
 
-const API = "https://jawad-ai-api.jawadraja0099.workers.dev/";
+// CORRECT CLOUDFLARE WORKER URL
+const API = "https://jawad-ai-api.jawadraja00999.workers.dev/";
 
 const durationInput = document.getElementById("duration");
 const durationValue = document.getElementById("durationValue");
@@ -262,7 +229,6 @@ durationInput.addEventListener("input", function(){
   const seconds = Number(durationInput.value);
 
   durationValue.textContent = seconds;
-
   cost.textContent = (seconds * 24) + " credits";
 
 });
@@ -271,10 +237,34 @@ function setStatus(message){
   statusBox.textContent = message;
 }
 
+async function readResponse(response){
+
+  const text = await response.text();
+
+  let data;
+
+  try{
+    data = JSON.parse(text);
+  }catch{
+    throw new Error(
+      "Server returned an invalid response. Check Cloudflare Worker."
+    );
+  }
+
+  if(!response.ok){
+    throw new Error(
+      data.error ||
+      data.message ||
+      "Server error: " + response.status
+    );
+  }
+
+  return data;
+}
+
 function base64ToBlob(base64,type){
 
   const binary = atob(base64);
-
   const bytes = new Uint8Array(binary.length);
 
   for(let i=0;i<binary.length;i++){
@@ -282,19 +272,14 @@ function base64ToBlob(base64,type){
   }
 
   return new Blob([bytes],{type:type});
-
 }
 
 async function generateVideo(){
 
   const topic = document.getElementById("topic").value.trim();
-
   const prompt = document.getElementById("prompt").value.trim();
-
   const narration = document.getElementById("narration").value.trim();
-
   const voiceId = document.getElementById("voice").value;
-
   const duration = Number(durationInput.value);
 
   if(!prompt){
@@ -307,11 +292,16 @@ async function generateVideo(){
     return;
   }
 
+  if(narration.length > 4500){
+    alert("Please shorten your narration.");
+    return;
+  }
+
   generateBtn.disabled = true;
 
   document.getElementById("resultCard").classList.add("hidden");
 
-  setStatus("Starting video and voice generation...");
+  setStatus("Connecting to Cloudflare...");
 
   try{
 
@@ -331,23 +321,19 @@ async function generateVideo(){
           ". Educational short for THE INFO HUB.",
 
         narration:narration,
-
         voice_id:voiceId,
-
         duration:duration
 
       })
 
     });
 
-    const data = await response.json();
+    const data = await readResponse(response);
 
-    if(!response.ok || !data.success || !data.id){
-
+    if(!data.success || !data.id){
       throw new Error(
         data.error || "Video generation could not start."
       );
-
     }
 
     document.getElementById("captions").textContent = narration;
@@ -367,9 +353,7 @@ async function generateVideo(){
 
       audioObjectUrl = URL.createObjectURL(blob);
 
-      const audio = document.getElementById("voiceAudio");
-
-      audio.src = audioObjectUrl;
+      document.getElementById("voiceAudio").src = audioObjectUrl;
 
       document.getElementById("audioDownload").href = audioObjectUrl;
 
@@ -380,7 +364,7 @@ async function generateVideo(){
       document.getElementById("voiceArea").classList.add("hidden");
 
       if(data.voice && data.voice.error){
-        setStatus("Video started. Voice issue: " + data.voice.error);
+        setStatus("Voice error: " + data.voice.error);
       }
 
     }
@@ -389,7 +373,14 @@ async function generateVideo(){
 
   }catch(error){
 
-    setStatus("Error: " + error.message);
+    if(error instanceof TypeError){
+      setStatus(
+        "Network error: Could not connect to Cloudflare. " +
+        "Check the Worker URL, deployment and CORS settings."
+      );
+    }else{
+      setStatus("Error: " + error.message);
+    }
 
   }finally{
 
@@ -405,8 +396,7 @@ async function checkStatus(id){
 
     setStatus(
       "Video is processing... Please wait. (" +
-      attempt +
-      "/90)"
+      attempt + "/90)"
     );
 
     await new Promise(resolve=>setTimeout(resolve,4000));
@@ -415,15 +405,7 @@ async function checkStatus(id){
       API + "status?id=" + encodeURIComponent(id)
     );
 
-    const data = await response.json();
-
-    if(!response.ok){
-
-      throw new Error(
-        data.error || "Could not check video status."
-      );
-
-    }
+    const data = await readResponse(response);
 
     if(data.status === "complete" && data.video_url){
 
@@ -444,7 +426,7 @@ async function checkStatus(id){
 
       throw new Error(
         data.error?.message ||
-        "Video generation ended with status: " + data.status
+        "Video generation failed: " + data.status
       );
 
     }
